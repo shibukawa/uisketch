@@ -1,0 +1,118 @@
+{"source_id": "req.initial-implementation-slice", "target_id": "req.web-visual-editor", "relation": "links_to", "section": "Out of Scope", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.uisketch-cli", "relation": "links_to", "section": "Minimum CLI Behavior", "target_path": "specs/uisketch-cli.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.renderer-acceptance-tests", "relation": "links_to", "section": "Acceptance Criteria", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.ui-sketch-library-overview", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-library-overview.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.ui-component-catalog", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.renderer-acceptance-tests", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.initial-implementation-slice", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.ui-sketch-file-format", "relation": "links_to", "section": "Summary", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.vscode-extension", "relation": "links_to", "section": "Summary", "target_path": "specs/vscode-extension.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Source Fence Forms", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.renderer-acceptance-tests", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.markdown-embedding-workflow", "target_id": "req.vscode-extension", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/vscode-extension.md"}
+{"source_id": "req.renderer-acceptance-tests", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.renderer-acceptance-tests", "target_id": "req.ui-component-catalog", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.renderer-acceptance-tests", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.renderer-acceptance-tests", "target_id": "req.initial-implementation-slice", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/initial-implementation-slice.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Renderer Responsibilities", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.uisketch-cli", "relation": "links_to", "section": "Renderer Responsibilities", "target_path": "specs/uisketch-cli.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.renderer-acceptance-tests", "relation": "links_to", "section": "ASCII Output", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.ui-sketch-library-overview", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-library-overview.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.uisketch-cli", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/uisketch-cli.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.markdown-embedding-workflow", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.renderer-acceptance-tests", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.sketch-wireframe-renderer", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Arrangement Components", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.renderer-acceptance-tests", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/renderer-acceptance-tests.md"}
+{"source_id": "req.ui-component-catalog", "target_id": "req.initial-implementation-slice", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/initial-implementation-slice.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-sketch-file-format", "relation": "links_to", "section": "Source Model", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-sketch-library-overview", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-library-overview.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-flow-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-flow-model.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-concept-model", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-flow-model", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-flow-model", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.ui-flow-model", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-sketch-file-format", "relation": "links_to", "section": "Supported Authoring Forms", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Supported Authoring Forms", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-component-catalog", "relation": "links_to", "section": "Core Layout Nodes", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-component-catalog", "relation": "links_to", "section": "Machine-Readable YAML Schema", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-component-catalog", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.markdown-embedding-workflow", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-layout-dsl", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Summary", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "File Extension", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Uisketch Source Fences", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.uisketch-cli", "relation": "links_to", "section": "Relationship To Concepts", "target_path": "specs/uisketch-cli.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Validation Rules", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-sketch-library-overview", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-library-overview.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.uisketch-cli", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/uisketch-cli.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.markdown-embedding-workflow", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.ui-sketch-file-format", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-concept-model", "relation": "links_to", "section": "Goals", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-concept-model", "relation": "links_to", "section": "Goals", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-flow-model", "relation": "links_to", "section": "Goals", "target_path": "specs/ui-flow-model.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.ui-sketch-library-overview", "target_id": "req.vscode-extension", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/vscode-extension.md"}
+{"source_id": "req.ui-validation-rules", "target_id": "req.ui-concept-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-concept-model.md"}
+{"source_id": "req.ui-validation-rules", "target_id": "req.ui-flow-model", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-flow-model.md"}
+{"source_id": "req.ui-validation-rules", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.ui-validation-rules", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Render Command", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Markdown Command", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.markdown-embedding-workflow", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.uisketch-cli", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Summary", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.ui-sketch-file-format", "relation": "links_to", "section": "Summary", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.sketch-wireframe-renderer", "relation": "links_to", "section": "Summary", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Preview Surfaces", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.ui-validation-rules", "relation": "links_to", "section": "Schema-Aware Editing", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Bake And Rebuild Commands", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.markdown-embedding-workflow", "relation": "links_to", "section": "Acceptance Criteria", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.markdown-embedding-workflow", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/markdown-embedding-workflow.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.vscode-extension", "target_id": "req.web-visual-editor", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/web-visual-editor.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Summary", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.sketch-wireframe-renderer", "relation": "links_to", "section": "Summary", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-component-catalog", "relation": "links_to", "section": "Editor Document Model", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-validation-rules", "relation": "links_to", "section": "Validation Feedback", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-sketch-library-overview", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-library-overview.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-sketch-file-format", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-sketch-file-format.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-layout-dsl", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-layout-dsl.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-component-catalog", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.sketch-wireframe-renderer", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/sketch-wireframe-renderer.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-validation-rules", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/ui-validation-rules.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.initial-implementation-slice", "relation": "relates_to", "section": "Related Documents", "target_path": "specs/initial-implementation-slice.md"}

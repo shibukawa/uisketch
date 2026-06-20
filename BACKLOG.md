@@ -1,0 +1,130 @@
+# Project Backlog
+
+## Items
+
+- [x] Decide canonical on-disk format for UI sketch layout source files.
+  - Type: decision
+  - Related: `req.ui-sketch-file-format`, `req.ui-concept-model`
+- [ ] Decide canonical folder layout for screen, action, ui-flow, and uisketch files.
+  - Type: decision
+  - Related: `req.ui-concept-model`, `req.ui-sketch-file-format`
+- [ ] Define strict YAML schema for UI layout nodes and validation error codes.
+  - Type: documentation
+  - Related: `req.ui-layout-dsl`, `req.ui-validation-rules`
+- [ ] Implement Markdown embedding build and rebuild workflows for `uisketch` fences.
+  - Type: implementation
+  - Related: `req.markdown-embedding-workflow`, `req.sketch-wireframe-renderer`
+- [ ] Update `uisketch markdown` CLI destination and format options.
+  - Type: implementation
+  - Related: `req.uisketch-cli`, `req.markdown-embedding-workflow`
+- [ ] Implement multi-sketch Markdown processing, normalized SVG asset filenames, and render index selection.
+  - Type: implementation
+  - Related: `req.markdown-embedding-workflow`, `req.uisketch-cli`, `req.sketch-wireframe-renderer`
+- [ ] Implement VSCode extension live preview for unbaked Markdown `uisketch` fences and `.uisketch.md` layout blocks.
+  - Type: implementation
+  - Related: `req.vscode-extension`, `req.markdown-embedding-workflow`, `req.sketch-wireframe-renderer`
+- [ ] Define shared UI Layout DSL schema packaging for VSCode embedded YAML editing and CLI validation.
+  - Type: documentation
+  - Related: `req.vscode-extension`, `req.ui-layout-dsl`, `req.ui-validation-rules`
+- [ ] Implement VSCode bake and rebuild commands for Markdown image/SVG asset generation.
+  - Type: implementation
+  - Related: `req.vscode-extension`, `req.markdown-embedding-workflow`
+- [ ] Decide whether the dedicated indentation-based UI DSL belongs in v0.1 or should wait until YAML semantics stabilize.
+  - Type: decision
+  - Related: `req.ui-layout-dsl`
+- [ ] Define vocabulary provider interface and fallback rendering behavior.
+  - Type: implementation
+  - Related: `req.ui-validation-rules`, `req.sketch-wireframe-renderer`
+- [ ] Add sample equipment-list concept and layout after the Go module structure is created.
+  - Type: implementation
+  - Related: `req.initial-implementation-slice`
+- [ ] Update CLI implementation to use positional `uisketch` inputs and standard-input fallback.
+  - Type: implementation
+  - Related: `req.uisketch-cli`, `req.ui-sketch-file-format`, `req.sketch-wireframe-renderer`
+- [ ] Decide the concrete SVG sketch algorithm for draw.io-like rough strokes, including deterministic seed behavior.
+  - Type: implementation
+  - Related: `req.sketch-wireframe-renderer`
+- [ ] Define machine-readable UI component catalog schema and map each catalog component to renderer behavior.
+  - Type: documentation
+  - Related: `req.ui-component-catalog`
+- [ ] Decide platform hint vocabulary for desktop, mobile, and web rendering differences.
+  - Type: decision
+  - Related: `req.ui-component-catalog`
+- [ ] Decide whether `layout` should be exposed to authors or kept only as an internal AST abstraction.
+  - Type: decision
+  - Related: `req.ui-component-catalog`, `req.ui-layout-dsl`
+- [ ] Define project-local registration format for `custom-component` renderer mappings.
+  - Type: documentation
+  - Related: `req.ui-component-catalog`, `req.sketch-wireframe-renderer`
+- [x] Replace `expanded` and `fixed-size` sizing wrappers with stack-level `widths` and `heights`.
+  - Type: implementation
+  - Related: `req.ui-layout-dsl`, `req.sketch-wireframe-renderer`
+- [ ] Implement `spacer` layout element for hstack remaining-space alignment.
+  - Type: implementation
+  - Related: `req.ui-layout-dsl`, `req.ui-component-catalog`, `req.sketch-wireframe-renderer`
+- [ ] Implement `mobile` root surface rendering and validation.
+  - Type: implementation
+  - Related: `req.ui-layout-dsl`, `req.ui-component-catalog`, `req.sketch-wireframe-renderer`
+- [ ] Implement numeric `grid.columns` parsing, validation, and renderer layout.
+  - Type: implementation
+  - Related: `req.ui-layout-dsl`, `req.ui-component-catalog`, `req.sketch-wireframe-renderer`
+- [ ] Implement scalar label shorthand for label-bearing leaf layout nodes.
+  - Type: implementation
+  - Related: `req.ui-layout-dsl`, `req.ui-validation-rules`, `req.vscode-extension`
+- [ ] Decide frontend framework and build tooling for the browser visual editor shell.
+  - Type: decision
+  - Related: `req.web-visual-editor`
+- [x] Define Go Wasm adapter API and stable error/result encoding for editor operations.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`, `req.ui-validation-rules`
+- [x] Implement Go Wasm adapter for browser parser, renderer, validator, and YAML serializer operations.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`, `req.ui-validation-rules`
+- [ ] Implement default spacing profile shared by SVG renderer and browser editor preview.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`, `req.ui-layout-dsl`
+- [ ] Decide local file access model for the first browser editor slice.
+  - Type: decision
+  - Related: `req.web-visual-editor`
+- [ ] Define versioned short-key symbol table for share URL payloads.
+  - Type: documentation
+  - Related: `req.web-visual-editor`
+- [x] Implement share URL encode/decode using short-key JSON, lz-string compression, and URL-safe base64.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Implement YAML, SVG, and compact payload download actions in the browser editor.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`
+- [ ] Implement clipboard copy actions for source, YAML, converted text output, share URL, and validation findings.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`
+- [ ] Implement converted ASCII/text output preview, copy, and `.txt` download in the browser editor.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`
+- [ ] Implement localStorage autosave, restore, and discard behavior for editor drafts.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Implement tree structure view synchronized with canvas, inspector, source edits, and validation findings.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`, `req.ui-validation-rules`
+- [ ] Decide first-slice scope for tree drag-and-drop: same-parent reorder only or cross-container wrapping.
+  - Type: decision
+  - Related: `req.web-visual-editor`
+- [ ] Implement editable `.uisketch.md` and focused YAML layout source modes in the browser editor.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-sketch-file-format`, `req.ui-layout-dsl`
+- [ ] Implement read-only normalized YAML viewer for visual editing results.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-sketch-file-format`
+- [ ] Add GitHub Pages static build and deployment configuration for the browser editor.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Decide GitHub Pages base path and hash-route strategy for repository Pages and custom domains.
+  - Type: decision
+  - Related: `req.web-visual-editor`
+- [ ] Prioritize post-first-slice helpful editor features such as undo/redo, templates, validation panel, Markdown embed export, PNG/PDF export, diff, sample gallery, and accessibility checklist.
+  - Type: decision
+  - Related: `req.web-visual-editor`
+- [ ] Add SVG renderer golden acceptance cases after SVG output is implemented.
+  - Type: implementation
+  - Related: `req.renderer-acceptance-tests`, `req.sketch-wireframe-renderer`

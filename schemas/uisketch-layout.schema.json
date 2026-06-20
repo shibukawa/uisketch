@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uisketch.local/schemas/uisketch-layout.schema.json",
+  "title": "Uisketch UI Layout DSL",
+  "description": "Schema for the YAML root node used in .uisketch.md files and uisketch Markdown fences.",
+  "$ref": "#/$defs/node",
+  "$defs": {
+    "componentType": {
+      "type": "string",
+      "enum": [
+        "browser",
+        "window",
+        "mobile",
+        "dialog",
+        "menu",
+        "vstack",
+        "hstack",
+        "spacer",
+        "grid",
+        "table-layout",
+        "split-pane",
+        "sidebar",
+        "section",
+        "tabs",
+        "menubar",
+        "button",
+        "icon-button",
+        "floating-action-button",
+        "badge-button",
+        "toggle-button",
+        "link",
+        "label",
+        "hint",
+        "note",
+        "review",
+        "image",
+        "input",
+        "checkbox",
+        "switch",
+        "slider",
+        "table",
+        "list",
+        "tree",
+        "calendar",
+        "badge",
+        "custom-component"
+      ]
+    },
+    "labelValue": {
+      "description": "Visible label text. As a node value, this is scalar label shorthand such as button: Save or image: Hero.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "vocabulary"
+          ],
+          "properties": {
+            "vocabulary": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "bareChildType": {
+      "description": "A child node shorthand with no properties, equivalent to an empty component node such as image: or tree:.",
+      "type": "string",
+      "enum": [
+        "spacer",
+        "button",
+        "icon-button",
+        "floating-action-button",
+        "badge-button",
+        "toggle-button",
+        "link",
+        "label",
+        "hint",
+        "note",
+        "review",
+        "badge",
+        "input",
+        "checkbox",
+        "switch",
+        "slider",
+        "image",
+        "custom-component",
+        "table",
+        "list",
+        "tree",
+        "calendar"
+      ]
+    },
+    "metadata": {
+      "description": "Project-defined non-rendered metadata.",
+      "type": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null"
+      ]
+    },
+    "highlight": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "nodeList": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/node"
+          },
+          {
+            "$ref": "#/$defs/bareChildType"
+          }
+        ]
+      }
+    },
+    "nodeProperties": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "$ref": "#/$defs/labelValue"
+        },
+        "label": {
+          "$ref": "#/$defs/labelValue"
+        },
+        "hint": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "badge": {
+          "type": [
+            "string",
+            "number",
+            "integer"
+          ]
+        },
+        "count": {
+          "type": [
+            "string",
+            "number",
+            "integer"
+          ]
+        },
+        "action": {
+          "type": "string"
+        },
+        "anchor": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string",
+          "description": "Deprecated. Use anchor in new or rewritten files."
+        },
+        "address": {
+          "type": "string"
+        },
+        "orientation": {
+          "type": "string",
+          "enum": [
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "widths": {
+          "$ref": "#/$defs/sizeSlots"
+        },
+        "heights": {
+          "$ref": "#/$defs/sizeSlots"
+        },
+        "columns": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/labelValue"
+              }
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        },
+        "children": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nodeList"
+            },
+            {
+              "$ref": "#/$defs/node"
+            }
+          ]
+        },
+        "buttons": {
+          "$ref": "#/$defs/nodeList"
+        },
+        "child": {
+          "$ref": "#/$defs/node"
+        },
+        "data": {
+          "$ref": "#/$defs/metadata"
+        },
+        "highlight": {
+          "$ref": "#/$defs/highlight"
+        },
+        "fallback": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "shape": {
+              "type": "string"
+            }
+          }
+        },
+        "platforms": {
+          "type": [
+            "array",
+            "object"
+          ]
+        }
+      }
+    },
+    "sizeSlots": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          {
+            "const": "*"
+          }
+        ]
+      }
+    },
+    "node": {
+      "description": "A UI Layout DSL node is an object with exactly one component type key. The value is usually a property object; a scalar string is accepted as label shorthand for label-bearing leaf nodes, for example button: Save or image: Hero.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/componentType"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/nodeProperties"
+          },
+          {
+            "$ref": "#/$defs/labelValue"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  }
+}
