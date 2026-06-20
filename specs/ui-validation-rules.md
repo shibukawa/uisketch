@@ -49,15 +49,19 @@ Validation should check:
 | Missing referenced root ID | A root has no `id` but is referenced by a flow or link. |
 | Unresolved navigation target | `button anchor: alert-create-dialog` references no known root or element ID. |
 | Invalid uisketch source | A source file lacks `type: uisketch`, has no explicit `uisketch` source fence, or has no generated `uisketch:source` comment to rebuild from. |
+| Invalid prompt property | A layout element uses `prompt` with a non-string value, such as an object or list. |
+| Unsupported layout property | A layout element contains an unknown property key outside the supported DSL keys; project-specific structured values should be placed under `data`. |
 | Invalid tabs shape | A `tabs` node has no `labels`, has no selected label, has more than one selected label, or uses `children` as multiple inactive tab bodies instead of the one active tab body. |
-| Invalid stack proportions | An `hstack.widths` or `vstack.heights` array has a different length than `children`, contains values other than numbers or `*`, uses numeric percentages that exceed `100` when `*` is present, or omits `*` while numeric percentages do not total `100`. |
+| Invalid stack proportions | An `hstack.widths` or `vstack.heights` array has a different length than `children`, contains values other than numbers or `$`, uses numeric percentages that exceed `100` when `$` is present, or omits `$` while numeric percentages do not total `100`. |
 | Legacy sizing wrapper | A new or rewritten layout still uses `expanded` or `fixed-size` instead of stack-level proportions. |
 
 The legacy `to` navigation field may be parsed for migration, but validators should prefer `anchor` in findings and should warn when newly authored or rewritten files still use `to`.
 
+The `prompt` property is allowed on any layout element as AI-agent guidance. Validators and schema checks should recognize the key and require a string value, including YAML block scalar strings. They should not parse, execute, lint, or semantically validate the prompt text. Renderers should ignore it for visible output.
+
 For `tabs.labels`, validators should treat a string item as inactive and a single-item list item as selected. Any other nested value in `labels` is invalid. New or rewritten `tabs` nodes should have exactly one selected label and one ordinary `children` subtree for the active body.
 
-For stack proportions, validators should allow `hstack.widths` only on `hstack` and `vstack.heights` only on `vstack`. Numeric entries are percentages, not pixels. `*` entries are resolved by dividing the remaining percentage equally among all `*` entries.
+For stack proportions, validators should allow `hstack.widths` only on `hstack` and `vstack.heights` only on `vstack`. Numeric entries are percentages, not pixels. `$` entries are resolved by dividing the remaining percentage equally among all `$` entries. Parsers may accept quoted `"*"` as a legacy spelling, but writers should emit `$`.
 
 Validators may accept legacy `expanded` and `fixed-size` nodes while reading old sources, but should report them as migration findings. Writers and editor save operations should replace them with ordinary stack children plus `widths` or `heights` where proportional sizing is needed.
 
@@ -96,4 +100,4 @@ Expected labels:
 
 ## Native-Language Summary
 
-Validation は UI 単体ではなく、Requirement、DFD、Vocabulary との整合を見る。加えて `.uisketch.md` の frontmatter が `type: uisketch` を持つこと、明示的な `uisketch` fence または生成済み `uisketch:source` comment があることも検証する。`## Layout` や `## レイアウト` 見出し配下の通常 `yaml` fence は render/markdown の入力として扱わない。button/link などの `anchor` は root ID または解決済み element ID として存在確認する。DFD にある操作が UI にない、UI にある操作が Requirement にない、Vocabulary と UI ラベルがずれている、といった問題を検知する。
+Validation は UI 単体ではなく、Requirement、DFD、Vocabulary との整合を見る。加えて `.uisketch.md` の frontmatter が `type: uisketch` を持つこと、明示的な `uisketch` fence または生成済み `uisketch:source` comment があることも検証する。`## Layout` や `## レイアウト` 見出し配下の通常 `yaml` fence は render/markdown の入力として扱わない。button/link などの `anchor` は root ID または解決済み element ID として存在確認する。prompt は任意要素に置ける AI エージェント向けコメントとしてキーと文字列型だけを検証し、内容は意味解釈しない。DFD にある操作が UI にない、UI にある操作が Requirement にない、Vocabulary と UI ラベルがずれている、といった問題を検知する。

@@ -78,7 +78,7 @@ Required behavior:
 - Apply the same schema to the fenced source inside `uisketch:source` HTML comments.
 - Apply the same schema to explicit `uisketch` source fences in `.uisketch.md` files.
 - Provide completions for component types, common properties, and enum-like fields.
-- Show diagnostics for malformed YAML, unknown component types, invalid child placement, duplicate IDs, and unsupported properties.
+- Show diagnostics for malformed YAML, unknown component types, invalid child placement, duplicate IDs, unsupported properties, and non-string `prompt` values.
 - Preserve ordinary YAML comments in source blocks and comments.
 - Avoid applying UI Layout DSL diagnostics to unrelated Markdown YAML examples.
 
@@ -160,7 +160,7 @@ In scope:
 - Render non-destructive SVG previews in Markdown preview or a side webview.
 - Recognize explicit `uisketch` source fences in `.uisketch.md` files.
 - Run validation diagnostics for malformed YAML and unknown component types.
-- Provide schema-backed completions for root components, `children`, `id`, `title`, `label`, `action`, `anchor`, and `hint`.
+- Provide schema-backed completions for root components, `children`, `id`, `title`, `label`, `action`, `anchor`, `hint`, and `prompt`.
 - Provide `Bake Markdown File` for SVG fences, writing image references, SVG assets, and `uisketch:source` comments.
 - Provide `Rebuild Baked Markdown File` for existing image-plus-comment pairs.
 

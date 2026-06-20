@@ -123,6 +123,55 @@ func TestParseLayoutNewSurfaceAndNavigationFields(t *testing.T) {
 	}
 }
 
+func TestParseYAMLAcceptsPromptOnAnyElement(t *testing.T) {
+	node, err := ParseYAML(`browser:
+  id: root
+  prompt: |
+    AI agents should keep this layout dense.
+    Preserve the primary action.
+  children:
+    - button:
+        label: Create Alert
+        prompt: Prefer this as the primary action.
+`)
+	if err != nil {
+		t.Fatalf("ParseYAML returned error: %v", err)
+	}
+	if !strings.Contains(node.Prompt, "keep this layout dense") {
+		t.Fatalf("root Prompt = %q", node.Prompt)
+	}
+	if got := node.Children[0].Prompt; got != "Prefer this as the primary action." {
+		t.Fatalf("child Prompt = %q", got)
+	}
+}
+
+func TestParseYAMLRejectsNonStringPrompt(t *testing.T) {
+	_, err := ParseYAML(`button:
+  label: Save
+  prompt:
+    role: primary
+`)
+	if err == nil {
+		t.Fatal("ParseYAML returned nil error")
+	}
+	if !strings.Contains(err.Error(), `prompt under button("Save") must be a string`) {
+		t.Fatalf("error %q does not contain prompt diagnostic", err)
+	}
+}
+
+func TestParseYAMLRejectsUnsupportedPropertyWithoutSuggestion(t *testing.T) {
+	_, err := ParseYAML(`button:
+  label: Save
+  ai_note: Keep visible
+`)
+	if err == nil {
+		t.Fatal("ParseYAML returned nil error")
+	}
+	if !strings.Contains(err.Error(), `unknown property "ai_note" under button`) {
+		t.Fatalf("error %q does not contain unknown property diagnostic", err)
+	}
+}
+
 func TestParseYAMLAllowsFlexibleYAMLIndentation(t *testing.T) {
 	node, err := ParseYAML(`browser:
     id: flexible
@@ -151,7 +200,7 @@ func TestParseYAMLReadsTabsLabelsAndStackProportions(t *testing.T) {
     - About
   children:
     vstack:
-      heights: [20, "*", "*"]
+      heights: [20, $, $]
       children:
         - label: Header
         - table:
@@ -176,7 +225,7 @@ func TestParseYAMLReadsTabsLabelsAndStackProportions(t *testing.T) {
 		t.Fatalf("tab body type = %q, want vstack", body.Type)
 	}
 	if len(body.Heights) != 3 || !body.Heights[1].Star || !body.Heights[2].Star {
-		t.Fatalf("body heights = %#v, want 20, *, *", body.Heights)
+		t.Fatalf("body heights = %#v, want 20, $, $", body.Heights)
 	}
 }
 

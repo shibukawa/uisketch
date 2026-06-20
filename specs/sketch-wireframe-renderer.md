@@ -90,7 +90,7 @@ ASCII output should:
 - Prefer readable labels over visual precision.
 - Be covered by golden acceptance tests defined in [Renderer Acceptance Tests](renderer-acceptance-tests.md).
 
-Renderers should resolve `hstack.widths` and `vstack.heights` before laying out direct children. Numeric entries reserve that percentage of the available stack axis. `*` entries divide the remaining size equally after numeric percentages. SVG and ASCII output should use the resolved proportions for child regions while still enforcing minimum readable sizes when a label or control would otherwise become unreadable.
+Renderers should resolve `hstack.widths` and `vstack.heights` before laying out direct children. Numeric entries reserve that percentage of the available stack axis. `$` entries divide the remaining size equally after numeric percentages. SVG and ASCII output should use the resolved proportions for child regions while still enforcing minimum readable sizes when a label or control would otherwise become unreadable.
 
 For `grid`, renderers should use `grid.columns` when present to determine the number of columns. The default is `2` columns when omitted. The row count is derived from the child count and selected column count, rounding up. Children are placed in row-major order.
 
@@ -125,7 +125,7 @@ Example:
 +------------------------------------------------+
 ```
 
-Tabbed ASCII output should show the active tab label and connect it to the content panel by removing the separator directly below the active tab. Inactive tabs should retain a lower border, using box-drawing corners such as `─┘` and `└─` where width permits:
+Tabbed ASCII output should show the active tab label and connect it to the content panel by removing the separator directly below the active tab. The tab strip and the content panel top border share one seam row. On that seam row, the active tab's interior width must be blank space, not horizontal rule characters, so the active tab visibly opens into the content panel. Inactive tabs should retain a lower border, using box-drawing corners such as `─┘` and `└─` where width permits:
 
 ```text
 ┌─────────┐┌────────────┐┌─────────┐
@@ -136,6 +136,17 @@ Tabbed ASCII output should show the active tab label and connect it to the conte
 │                                               │
 └───────────────────────────────────────────────┘
 ```
+
+For precise ASCII tab seams, describe each box-drawing cell by the directions it connects to: `t` = up, `l` = left, `b` = down, and `r` = right. Renderers should use equivalent Unicode box-drawing glyphs for these connections, for example `tb` = `│`, `lr` = `─`, `tr` = `└`, `tlr` = `┴`, and `tbr` = `├`. The expected horizontal tab seam rules are:
+
+| Tab state | Left edge on seam row | Interior bottom on seam row | Right edge on seam row |
+| --- | --- | --- | --- |
+| First tab, active | `tb` | no stroke; fill with spaces | `tr` |
+| First tab, inactive | `tbr` | `lr` | `tlr` |
+| Non-first tab, active | `tr` | no stroke; fill with spaces | `tr` |
+| Non-first tab, inactive | `tlr` | `lr` | `tlr` |
+
+The panel top border starts or continues on the same seam row outside active-tab gaps. Adjacent tabs may share seam cells when their edges touch, but the resulting glyph must preserve the same connection semantics: inactive tab bottoms stay connected to the panel top line, while active tab bottoms remain open. A renderer must not draw a horizontal rule directly below the selected label.
 
 The exact tab widths may vary with configured output width and label length, but the renderer must keep three invariants: every label is visible, the selected label is identifiable, and the content panel contains only the active tab body.
 
@@ -199,4 +210,4 @@ The renderer API should support a stable preview mode that accepts the parsed la
 
 ## Native-Language Summary
 
-Renderer は `.uisketch.md` 内の UI DSL YAML ブロックや Markdown 内の `uisketch` fence から低忠実度のワイヤーフレームを生成する。CLI の render は screen concept ではなく `.uisketch.md` を直接入力にする。通常 Markdown を render 入力にする場合、埋め込み図が 1 つならそれを描画し、複数ある場合は 1-origin index で指定された N 個目の図を描画する。Markdown build/rebuild では文書内のすべての埋め込み図を処理する。SVG は draw.io の sketch 風を参考にしたラフな線で描画するが、draw.io 自体には依存しない。browser はタブ、アドレスバー、戻る/進む/更新、右上ボタンを描き、window はタイトルバーと右上ボタン、mobile はスマートフォン枠、ノッチ、ホームインジケータを描き、dialog はタイトルバーと右上ボタンを描く。描画タイトルは frontmatter ではなく root layout node の title を使う。ASCII は単なる行リストではなく、罫線文字を使った UI アートとして画面領域やボタン配置を表現し、`vstack`、`hstack`、`spacer`、`grid.columns`、`hstack.widths`、`vstack.heights` などの構造を位置決めに反映する。hstack 内の spacer は見えない要素として残り幅を消費し、複数ある場合は按分する。grid は columns で列数を決め、省略時は 2 列で描画する。最初の出力先は SVG と ASCII で、将来の HTML、React、Markdown、PPTX 出力に備えて中間の sketch model を持つ。
+Renderer は `.uisketch.md` 内の UI DSL YAML ブロックや Markdown 内の `uisketch` fence から低忠実度のワイヤーフレームを生成する。CLI の render は screen concept ではなく `.uisketch.md` を直接入力にする。通常 Markdown を render 入力にする場合、埋め込み図が 1 つならそれを描画し、複数ある場合は 1-origin index で指定された N 個目の図を描画する。Markdown build/rebuild では文書内のすべての埋め込み図を処理する。SVG は draw.io の sketch 風を参考にしたラフな線で描画するが、draw.io 自体には依存しない。browser はタブ、アドレスバー、戻る/進む/更新、右上ボタンを描き、window はタイトルバーと右上ボタン、mobile はスマートフォン枠、ノッチ、ホームインジケータを描き、dialog はタイトルバーと右上ボタンを描く。描画タイトルは frontmatter ではなく root layout node の title を使う。ASCII は単なる行リストではなく、罫線文字を使った UI アートとして画面領域やボタン配置を表現し、`vstack`、`hstack`、`spacer`、`grid.columns`、`hstack.widths`、`vstack.heights` などの構造を位置決めに反映する。ASCII の水平 tabs はタブ列とコンテンツパネル上端を同じ seam row に描き、アクティブタブの下部は罫線ではなく空白にしてパネルへ開いているように見せ、非アクティブタブの下部はパネル上端へ接続する。hstack 内の spacer は見えない要素として残り幅を消費し、複数ある場合は按分する。grid は columns で列数を決め、省略時は 2 列で描画する。最初の出力先は SVG と ASCII で、将来の HTML、React、Markdown、PPTX 出力に備えて中間の sketch model を持つ。

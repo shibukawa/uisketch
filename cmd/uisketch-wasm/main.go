@@ -25,6 +25,7 @@ type wasmNode struct {
 	Anchor   string     `json:"anchor,omitempty"`
 	Address  string     `json:"address,omitempty"`
 	Hint     string     `json:"hint,omitempty"`
+	Prompt   string     `json:"prompt,omitempty"`
 	Name     string     `json:"name,omitempty"`
 	Purpose  string     `json:"purpose,omitempty"`
 	Badge    string     `json:"badge,omitempty"`
@@ -170,6 +171,7 @@ func fromLayout(n *layout.Node) *wasmNode {
 		Anchor:  n.Anchor,
 		Address: n.Address,
 		Hint:    n.Hint,
+		Prompt:  n.Prompt,
 		Name:    n.Name,
 		Purpose: n.Purpose,
 		Badge:   n.Badge,
@@ -204,6 +206,7 @@ func toLayout(n *wasmNode) *layout.Node {
 		Anchor:  n.Anchor,
 		Address: n.Address,
 		Hint:    n.Hint,
+		Prompt:  n.Prompt,
 		Name:    n.Name,
 		Purpose: n.Purpose,
 		Badge:   n.Badge,
@@ -282,6 +285,7 @@ func formatNode(lines *[]string, n *wasmNode, indent int, listItem bool) {
 		{"anchor", n.Anchor},
 		{"address", n.Address},
 		{"hint", n.Hint},
+		{"prompt", n.Prompt},
 		{"name", n.Name},
 		{"purpose", n.Purpose},
 		{"badge", n.Badge},
@@ -337,7 +341,7 @@ func yamlSlots(slots []sizeSlot) string {
 	values := make([]string, len(slots))
 	for i, slot := range slots {
 		if slot.Star {
-			values[i] = `"*"`
+			values[i] = "$"
 		} else {
 			values[i] = fmt.Sprintf("%d", slot.Percent)
 		}

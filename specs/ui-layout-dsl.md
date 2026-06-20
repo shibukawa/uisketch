@@ -329,6 +329,31 @@ button:
 
 `data` may contain objects, arrays, strings, numbers, booleans, or null values. The core DSL should not prescribe project-specific keys, but validation may enforce local conventions. Renderers should preserve `data` as metadata in outputs that support metadata.
 
+## Element Prompt
+
+Every layout element may include an optional `prompt` string. `prompt` is an authoring note for AI agents that edit, generate, review, or explain the sketch source. It is not visible UI text and must not affect parsing, layout, rendering, navigation, validation semantics, or generated screenshots.
+
+Example:
+
+```yaml
+button:
+  label: Create Alert
+  action: action.create-alert
+  prompt: Prefer this as the primary action when generating alert workflows.
+```
+
+Multiline YAML strings are allowed for longer guidance:
+
+```yaml
+section:
+  title: Inspector
+  prompt: |
+    AI agents should keep this section dense.
+    Prefer table-style property editing over prose controls.
+```
+
+Tools may preserve `prompt` while round-tripping source, expose it in editor inspectors, or pass it to AI-assisted workflows. Tools are not required to parse the prompt text or interpret it deterministically. Schema validation and key-name validation must recognize `prompt` as a supported element property so hand-authored files do not receive unknown-property diagnostics for it. If project-specific structured instructions are needed, authors should use `data`; `prompt` is intentionally free-form text.
+
 ## Sizing And Growth
 
 Layout children should use stack-level proportional slots when authors need coarse sizing. The DSL should avoid wrapper-only sizing nodes because they make common layouts deeply nested and harder to edit.
@@ -372,7 +397,7 @@ The scalar shorthand is equivalent to `- spacer:`. Rewriting tools should normal
 | `hstack` | `widths` | Width percentages for direct children, from left to right. |
 | `vstack` | `heights` | Height percentages for direct children, from top to bottom. |
 
-Each entry in `widths` or `heights` is either a number or `*`. A number is a percentage of the available size along the parent axis. `*` means "all remaining size after numeric percentages"; when more than one `*` appears, the remaining size is divided evenly among those `*` entries.
+Each entry in `widths` or `heights` is either a number or `$`. A number is a percentage of the available size along the parent axis. `$` means "all remaining size after numeric percentages"; when more than one `$` appears, the remaining size is divided evenly among those `$` entries. Parsers may accept quoted `"*"` as a legacy spelling, but new or rewritten files should use `$` because bare `*` has YAML alias meaning.
 
 When `hstack.widths` is present, it takes precedence over `spacer` for direct child sizing. In that case, a `spacer` child receives the width assigned by the corresponding `widths` entry. Authors should normally use either `spacer` for content-based left/right alignment or `hstack.widths` for explicit proportional layout, not both in the same `hstack`.
 
@@ -392,7 +417,7 @@ hstack:
 
 ```yaml
 vstack:
-  heights: [20, *, *]
+  heights: [20, $, $]
   children:
     - label: Header
     - table:
@@ -401,7 +426,7 @@ vstack:
         id: lower-results
 ```
 
-In the second example, the first child receives 20 percent of the available height and the two `*` entries each receive 40 percent. `widths` and `heights` are sketch-level proportions, not pixel dimensions, CSS flex rules, or minimum/maximum constraints. The number of entries must match the number of direct `children`. Numeric percentages should total exactly `100` when no `*` is present and must not exceed `100` when `*` is present.
+In the second example, the first child receives 20 percent of the available height and the two `$` entries each receive 40 percent. `widths` and `heights` are sketch-level proportions, not pixel dimensions, CSS flex rules, or minimum/maximum constraints. The number of entries must match the number of direct `children`. Numeric percentages should total exactly `100` when no `$` is present and must not exceed `100` when `$` is present.
 
 Numeric pixel width, pixel height, min, max, margin, padding, and CSS-like box constraints are intentionally out of scope for the core DSL because the tool is a simple sketch layout tool, not a detailed visual layout engine. Use `hstack.widths` and `vstack.heights` only when the sketch needs proportional space allocation among direct stack children.
 
@@ -490,13 +515,13 @@ The `buttons` list is a layout shorthand. It is equivalent to a dialog body abov
 dialog:
   children:
     - vstack:
-        heights: [*, 12]
+        heights: [$, 12]
         children:
           - vstack:
               children:
                 - label: Delete this item?
           - hstack:
-              widths: [*, 15, 15]
+              widths: [$, 15, 15]
               children:
                 - label: ""
                 - button:
@@ -550,6 +575,7 @@ Schema rules:
 - `grid.columns` may be a positive integer, while `table.columns` remains a list of visible table column labels.
 - `label` and `title` may be literal strings or `{ vocabulary: <id> }` objects.
 - `data` remains project-defined structured metadata.
+- `prompt` may be a string on any element. It is non-rendered AI-agent guidance; schema validation recognizes the key and its string shape but does not interpret the text.
 - `to` is accepted for legacy files but should be reported as deprecated by validators and rewritten as `anchor`.
 
 For VS Code YAML validation, authors can associate the schema with standalone layout files by adding a workspace setting similar to:
@@ -579,4 +605,4 @@ For fenced YAML inside Markdown, tools should extract the fence body and validat
 
 ## Native-Language Summary
 
-UI DSL は自由図形ではなく、browser、window、mobile、dialog、menu、menubar、vstack、hstack、spacer、grid、split-pane、tabs、button、badge-button、label、hint、note、review、input、image、table などの少数の意味要素で構造を記述する。永続化形式としては `type: uisketch` の frontmatter と明示的な `uisketch` source fence を持つ Markdown 風ファイルを優先し、その fence body にこの DSL の階層構造を書く。`## Layout` や `## レイアウト` は通常の Markdown 見出しであり、通常 `yaml` fence を render/markdown 入力として自動検出しない。frontmatter の title は文書メタデータで、描画される表題は browser/window/mobile/dialog の title 属性に置く。mobile はスマートフォン枠を描く root surface として扱う。root id は任意だが、参照される root には id を付けることを推奨する。root 要素は child ではなく children を持ち、children は暗黙の vstack として扱う。button、badge-button、link は anchor で遷移先 id を持てる。hstack の中の spacer は残り横幅を消費し、複数ある場合は残り幅を按分する。hstack は widths、vstack は heights で直接の子要素に対する比率を指定でき、`*` は残り領域を表す。grid は columns で列数を指定でき、省略時は 2 列とする。dialog は buttons で下部右寄せのボタン列を表現できる。id と data はレンダリング結果のメタデータとして保持する。highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。menu は通常メニューとコンテキストメニューを兼ね、ルート要素にもなれる。menubar は root ではなく hstack 相当の desktop-style application menu row として扱う。動的な状態は別ルート定義で表す。hint/note/review は注釈であり製品 UI 文言ではない。入力グループは form/field ではなく vstack/hstack と label/input で表現する。画像領域は実画像ではなく image プレースホルダーで表す。ボタン列は toolbar 専用要素ではなく hstack または dialog.buttons で表現する。サイズ指定は wrapper 要素を増やさず、hstack.widths と vstack.heights のような stack-level property で表現する。通常の内容サイズはデフォルトなので専用要素にしない。CSS のような細かいレイアウト制御は扱わない。コンポーネント語彙は UI Component Catalog で管理する。
+UI DSL は自由図形ではなく、browser、window、mobile、dialog、menu、menubar、vstack、hstack、spacer、grid、split-pane、tabs、button、badge-button、label、hint、note、review、input、image、table などの少数の意味要素で構造を記述する。永続化形式としては `type: uisketch` の frontmatter と明示的な `uisketch` source fence を持つ Markdown 風ファイルを優先し、その fence body にこの DSL の階層構造を書く。`## Layout` や `## レイアウト` は通常の Markdown 見出しであり、通常 `yaml` fence を render/markdown 入力として自動検出しない。frontmatter の title は文書メタデータで、描画される表題は browser/window/mobile/dialog の title 属性に置く。mobile はスマートフォン枠を描く root surface として扱う。root id は任意だが、参照される root には id を付けることを推奨する。root 要素は child ではなく children を持ち、children は暗黙の vstack として扱う。button、badge-button、link は anchor で遷移先 id を持てる。hstack の中の spacer は残り横幅を消費し、複数ある場合は残り幅を按分する。hstack は widths、vstack は heights で直接の子要素に対する比率を指定でき、`$` は残り領域を表す。grid は columns で列数を指定でき、省略時は 2 列とする。dialog は buttons で下部右寄せのボタン列を表現できる。id と data はレンダリング結果のメタデータとして保持する。prompt は任意要素に置ける AI エージェント向けの非表示コメントで、schema はキーと文字列型を検査するが parser や renderer は意味解釈しない。highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。menu は通常メニューとコンテキストメニューを兼ね、ルート要素にもなれる。menubar は root ではなく hstack 相当の desktop-style application menu row として扱う。動的な状態は別ルート定義で表す。hint/note/review は注釈であり製品 UI 文言ではない。入力グループは form/field ではなく vstack/hstack と label/input で表現する。画像領域は実画像ではなく image プレースホルダーで表す。ボタン列は toolbar 専用要素ではなく hstack または dialog.buttons で表現する。サイズ指定は wrapper 要素を増やさず、hstack.widths と vstack.heights のような stack-level property で表現する。通常の内容サイズはデフォルトなので専用要素にしない。CSS のような細かいレイアウト制御は扱わない。コンポーネント語彙は UI Component Catalog で管理する。

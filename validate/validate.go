@@ -98,6 +98,8 @@ func validateNodeShape(n *layout.Node) []Finding {
 		}
 		if len(n.Children) == 0 {
 			findings = append(findings, Finding{Severity: Error, Message: "tabs children must define the active tab body"})
+		} else if len(n.Labels) > 0 && len(n.Children) > 1 {
+			findings = append(findings, Finding{Severity: Error, Message: "tabs children must define exactly one active tab body"})
 		}
 	}
 	if len(n.Widths) > 0 {

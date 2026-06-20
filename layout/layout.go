@@ -32,6 +32,7 @@ type Node struct {
 	LegacyTo    string
 	Address     string
 	Hint        string
+	Prompt      string
 	Name        string
 	Purpose     string
 	Badge       string
@@ -199,6 +200,11 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			out.Title = labelLikeValue(prop.Value)
 		case "hint":
 			out.Hint = scalarString(prop.Value)
+		case "prompt":
+			prompt, ok := parseStringProperty(prop.Value, ctx, "prompt", describeNode(out))
+			if ok {
+				out.Prompt = prompt
+			}
 		case "name":
 			out.Name = scalarString(prop.Value)
 		case "purpose":
@@ -268,6 +274,8 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 		default:
 			if suggestion := closestKnownProperty(name); suggestion != "" {
 				ctx.add(prop.Key, "unknown property %q under %s; did you mean %q?", name, describeNode(out), suggestion)
+			} else {
+				ctx.add(prop.Key, "unknown property %q under %s", name, describeNode(out))
 			}
 		}
 	}
@@ -319,6 +327,14 @@ func parsePositiveInt(n ast.Node, ctx *parseContext, prop, parent string) (int, 
 	return value, true
 }
 
+func parseStringProperty(n ast.Node, ctx *parseContext, prop, parent string) (string, bool) {
+	if !isScalarNode(n) {
+		ctx.add(n, "%s under %s must be a string", prop, parent)
+		return "", false
+	}
+	return scalarString(n), true
+}
+
 func parseTabLabels(n ast.Node, ctx *parseContext, prop, parent string) ([]TabLabel, bool) {
 	seq, ok := n.(*ast.SequenceNode)
 	if !ok {
@@ -354,7 +370,7 @@ func parseSizeSlots(n ast.Node, ctx *parseContext, prop, parent string) ([]SizeS
 			continue
 		}
 		value := scalarString(item)
-		if value == "*" {
+		if value == "*" || value == "$" {
 			out = append(out, SizeSlot{Star: true})
 			continue
 		}
@@ -470,6 +486,7 @@ var knownProperties = []string{
 	"id", "label", "title", "hint", "name", "purpose", "badge", "count",
 	"action", "anchor", "to", "address", "children", "buttons", "columns",
 	"labels", "widths", "heights", "child", "data", "highlight", "fallback",
+	"prompt",
 }
 
 func editDistance(a, b string) int {

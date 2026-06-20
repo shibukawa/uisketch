@@ -72,3 +72,45 @@ func TestRenderTabsShowsOnlyActiveBody(t *testing.T) {
 		t.Fatalf("ASCII output contains inactive body:\n%s", got)
 	}
 }
+
+func TestRenderTabsActiveSeamIsOpen(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   []sketch.TabLabel
+		wantLine string
+	}{
+		{
+			name: "first active",
+			labels: []sketch.TabLabel{
+				{Text: "Visual Editor", Selected: true},
+				{Text: "Source"},
+			},
+			wantLine: "││                 └┴────────┴",
+		},
+		{
+			name: "second active",
+			labels: []sketch.TabLabel{
+				{Text: "Visual Editor"},
+				{Text: "Source", Selected: true},
+			},
+			wantLine: "│├───────────────┴┘          └",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Render(&sketch.Document{Root: &sketch.Node{
+				Type: "window",
+				Children: []*sketch.Node{{
+					Type:   "tabs",
+					Labels: tt.labels,
+					Children: []*sketch.Node{{
+						Type: "label", Label: "Active body",
+					}},
+				}},
+			}})
+			if !strings.Contains(got, tt.wantLine) {
+				t.Fatalf("ASCII tab seam does not contain %q:\n%s", tt.wantLine, got)
+			}
+		})
+	}
+}

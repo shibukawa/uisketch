@@ -166,6 +166,27 @@ func TestValidateLayoutAllowsTabsWidthsIndependentFromChildren(t *testing.T) {
 	}
 }
 
+func TestValidateLayoutRejectsMultipleTabsChildrenWithLabels(t *testing.T) {
+	root := &layout.Node{
+		Type: "browser",
+		Children: []*layout.Node{{
+			Type: "tabs",
+			Labels: []layout.TabLabel{
+				{Text: "Visual", Selected: true},
+				{Text: "Source"},
+			},
+			Children: []*layout.Node{
+				{Type: "label", Label: "First body"},
+				{Type: "label", Label: "Second body"},
+			},
+		}},
+	}
+	findings := ValidateLayout(root, nil)
+	if len(findings) != 1 || findings[0].Severity != Error || findings[0].Message != "tabs children must define exactly one active tab body" {
+		t.Fatalf("findings = %#v, want one multiple tab bodies error", findings)
+	}
+}
+
 func TestLoadScreenSketchErrorsOnMissingSourceLocation(t *testing.T) {
 	dir := t.TempDir()
 	screenPath := filepath.Join(dir, "screen.md")

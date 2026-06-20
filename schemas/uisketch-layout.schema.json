@@ -138,7 +138,7 @@
     },
     "nodeProperties": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "id": {
           "type": "string",
@@ -152,6 +152,10 @@
         },
         "hint": {
           "type": "string"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Free-form non-rendered guidance for AI agents. Tools validate only that this key exists in the DSL and that the value is a string."
         },
         "name": {
           "type": "string"
@@ -284,7 +288,10 @@
             "maximum": 100
           },
           {
-            "const": "*"
+            "enum": [
+              "$",
+              "*"
+            ]
           }
         ]
       }

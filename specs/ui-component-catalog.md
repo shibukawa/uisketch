@@ -101,6 +101,20 @@ input:
 
 The catalog defines that `data` exists and is non-visual. Projects may define their own schema for keys inside `data`. Renderers should preserve `data` as output metadata where the format supports it.
 
+## Shared Element Prompt
+
+Every component instance may include an optional `prompt` string. `prompt` is free-form guidance for AI agents that generate, edit, review, or explain a sketch. It is not visible UI, not a user-facing hint, and not structured metadata.
+
+Example:
+
+```yaml
+input:
+  label: Search
+  prompt: AI agents should keep this field prominent in filter-heavy layouts.
+```
+
+Renderers must not display `prompt` by default. Parsers and validators do not need to interpret the prompt text; they only need to recognize `prompt` as a supported key and validate that its value is a string. Structured, machine-readable metadata should continue to use `data`.
+
 ## Shared Highlighting
 
 Every component instance may include an optional `highlight` field. `highlight` marks the element as important for review, walkthrough, or documentation without changing its semantic role.
@@ -154,7 +168,7 @@ Arrangement components describe how child components are placed. They are intent
 
 Arrangement components may use coarse stack-level sizing properties from [UI Layout DSL](ui-layout-dsl.md): `hstack.widths` and `vstack.heights`. Content-based sizing is the default for ordinary controls and does not need a wrapper.
 
-`hstack` may include a `widths` array and `vstack` may include a `heights` array to assign proportional space to direct children. These arrays contain percentages or `*`; `*` means the remaining space after numeric percentages, split evenly when multiple `*` entries are present. The arrays are coarse sketch proportions, not CSS sizing or pixel layout controls.
+`hstack` may include a `widths` array and `vstack` may include a `heights` array to assign proportional space to direct children. These arrays contain percentages or `$`; `$` means the remaining space after numeric percentages, split evenly when multiple `$` entries are present. The arrays are coarse sketch proportions, not CSS sizing or pixel layout controls.
 
 `spacer` is the preferred shorthand when an `hstack` needs content at both edges and no explicit percentages are needed. It is invisible and has no label. Ordinary siblings keep content-based widths, and all `spacer` siblings split the remaining horizontal space. This is useful for toolbar and action-row sketches:
 
@@ -191,7 +205,7 @@ Example:
 
 ```yaml
 hstack:
-  widths: [20, *, *]
+  widths: [20, $, $]
   children:
     - sidebar:
         title: Navigation

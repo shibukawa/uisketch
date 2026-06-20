@@ -232,32 +232,63 @@ func renderTabs(c *canvas, r rect, n *sketch.Node) {
 	}
 	labels := tabLabels(n)
 	active := activeTabIndex(labels)
+	panel := rect{r.x, r.y + 2, r.w, r.h - 2}
+	drawBox(c, panel)
+	redrawTabsOverPanel(c, r, labels, active)
+	renderActiveTabBody(c, inset(panel, 1), n, active)
+}
+
+func redrawTabsOverPanel(c *canvas, r rect, labels []sketch.TabLabel, active int) {
 	tabX := r.x
-	var activeStart, activeEnd int
 	for i, label := range labels {
 		text := label.Text
-		w := min(max(len([]rune(text))+4, 10), max(10, r.w/3))
-		drawBox(c, rect{tabX, r.y, w, 3})
-		writeCentered(c, tabX+1, r.y+1, w-2, text)
 		if i == active {
-			activeStart, activeEnd = tabX+1, tabX+w-2
-			for x := activeStart; x <= activeEnd; x++ {
-				put(c, x, r.y+2, ' ')
-			}
+			text = "*" + text + "*"
 		}
+		w := min(max(len([]rune(text))+4, 10), max(10, r.w/3))
+		drawTab(c, rect{tabX, r.y, w, 3}, i == active, i == 0)
+		writeCentered(c, tabX+1, r.y+1, w-2, text)
 		tabX += w
 		if tabX >= r.x+r.w {
 			break
 		}
 	}
-	panel := rect{r.x, r.y + 3, r.w, r.h - 3}
-	drawBox(c, panel)
-	for x := activeStart; x <= activeEnd && x < panel.x+panel.w-1; x++ {
-		if x > panel.x {
-			put(c, x, panel.y, ' ')
-		}
+}
+
+func drawTab(c *canvas, r rect, active, first bool) {
+	if r.w < 2 || r.h < 2 {
+		return
 	}
-	renderActiveTabBody(c, inset(panel, 1), n, active)
+	x2 := r.x + r.w - 1
+	y2 := r.y + r.h - 1
+	put(c, r.x, r.y, '┌')
+	put(c, x2, r.y, '┐')
+	for x := r.x + 1; x < x2; x++ {
+		put(c, x, r.y, '─')
+	}
+	put(c, r.x, r.y+1, '│')
+	put(c, x2, r.y+1, '│')
+	if active {
+		if first {
+			put(c, r.x, y2, '│')
+		} else {
+			put(c, r.x, y2, '┘')
+		}
+		for x := r.x + 1; x < x2; x++ {
+			put(c, x, y2, ' ')
+		}
+		put(c, x2, y2, '└')
+		return
+	}
+	if first {
+		put(c, r.x, y2, '├')
+	} else {
+		put(c, r.x, y2, '┴')
+	}
+	put(c, x2, y2, '┴')
+	for x := r.x + 1; x < x2; x++ {
+		put(c, x, y2, '─')
+	}
 }
 
 func renderButton(c *canvas, r rect, n *sketch.Node) {
