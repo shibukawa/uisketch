@@ -12,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"uisketch/internal/projectfiles"
+	"uisketch/internal/renderapi"
 )
 
 //go:embed all:desktop_assets
@@ -78,6 +79,10 @@ func (a *DesktopApp) WriteFile(path, source, revision string) (projectfiles.File
 
 func (a *DesktopApp) CreateFile(path, source string) (projectfiles.FileResponse, error) {
 	return a.files.Create(path, source)
+}
+
+func (a *DesktopApp) RenderSource(source string) renderapi.Response {
+	return renderapi.RenderYAML(source)
 }
 
 func (a *DesktopApp) SetDirty(dirty bool) {

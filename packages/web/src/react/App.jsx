@@ -13,7 +13,6 @@ import {
 import { createHostFileApi } from "../model/host-file-api.js";
 import { createShareUrl, decodeSharePayload } from "../model/share-url.js";
 import { serializeSourceDocument } from "../model/source-document.js";
-import { serializeYaml } from "../model/yaml.js";
 import { useEditorStore } from "../state/useEditorStore.js";
 import { Canvas } from "./Canvas.jsx";
 import { Inspector } from "./Inspector.jsx";
@@ -36,12 +35,12 @@ export function App() {
   const currentFile = useEditorStore((state) => state.currentFile);
   const revision = useEditorStore((state) => state.revision);
   const root = useEditorStore((state) => state.root);
-  const yaml = useEditorStore((state) => serializeYaml(state.root));
   const source = useEditorStore((state) => state.currentSource());
   const [hostFileApi] = useState(() => createHostFileApi());
   const [savedDocs, setSavedDocs] = useState([]);
   const [projectFiles, setProjectFiles] = useState([]);
   const [message, setMessage] = useState("");
+  const [editorMode, setEditorMode] = useState("visual");
 
   useEffect(() => {
     window.uisketchHasUnsavedChanges = () => useEditorStore.getState().dirty;
@@ -302,25 +301,35 @@ export function App() {
           </button>
         </div>
       </header>
-      <main className="grid min-w-[1160px] grid-cols-[340px_minmax(520px,1fr)_320px] grid-rows-[minmax(520px,calc(100vh-92px))_320px] gap-3 bg-base-200 p-3">
-        <aside className="card row-span-2 overflow-auto bg-base-100">
-          <ToolPalette />
-        </aside>
-        <section className="card min-h-0 bg-base-100">
-          <div className="pane-title">Visual Editor</div>
-          <Canvas />
-        </section>
-        <aside className="card row-span-2 grid min-h-0 grid-rows-[auto_minmax(180px,auto)_auto_minmax(180px,1fr)] overflow-hidden bg-base-100">
-          <div className="pane-title">Properties</div>
-          <div className="overflow-auto">
-            <Inspector />
-          </div>
-          <TreePanel />
-        </aside>
-        <section className="card min-h-0 bg-base-100">
-          <div className="pane-title">Source</div>
-          <SourceEditor yaml={yaml} />
-        </section>
+      <main className="min-w-[1160px] bg-base-200 p-3">
+        <div role="tablist" className="tabs tabs-lift">
+          <button className={`tab ${editorMode === "visual" ? "tab-active" : ""}`} role="tab" type="button" onClick={() => setEditorMode("visual")}>
+            Visual Editor
+          </button>
+          <button className={`tab ${editorMode === "source" ? "tab-active" : ""}`} role="tab" type="button" onClick={() => setEditorMode("source")}>
+            Source&Preview
+          </button>
+        </div>
+        {editorMode === "visual" ? (
+          <section className="grid grid-cols-[340px_minmax(520px,1fr)_320px] gap-3" data-testid="visual-mode">
+            <aside className="card h-[calc(100vh-124px)] overflow-auto bg-base-100">
+              <ToolPalette />
+            </aside>
+            <section className="card h-[calc(100vh-124px)] min-h-0 bg-base-100">
+              <div className="pane-title">Visual Editor</div>
+              <Canvas />
+            </section>
+            <aside className="card grid h-[calc(100vh-124px)] min-h-0 grid-rows-[auto_minmax(180px,auto)_auto_minmax(180px,1fr)] overflow-hidden bg-base-100">
+              <div className="pane-title">Properties</div>
+              <div className="overflow-auto">
+                <Inspector />
+              </div>
+              <TreePanel />
+            </aside>
+          </section>
+        ) : (
+          <SourceEditor hostFileApi={hostFileApi} onMessage={setMessage} />
+        )}
       </main>
     </>
   );

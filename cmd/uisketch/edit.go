@@ -14,6 +14,7 @@ import (
 	"runtime"
 
 	"uisketch/internal/projectfiles"
+	"uisketch/internal/renderapi"
 )
 
 type projectFileService struct {
@@ -24,6 +25,10 @@ type writeRequest struct {
 	Path     string `json:"path"`
 	Source   string `json:"source"`
 	Revision string `json:"revision"`
+}
+
+type renderRequest struct {
+	Source string `json:"source"`
 }
 
 func runEdit(args []string) error {
@@ -47,6 +52,7 @@ func runEdit(args []string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/files", service.handleFiles)
 	mux.HandleFunc("/api/file", service.handleFile)
+	mux.HandleFunc("/api/render", service.handleRender)
 	mux.Handle("/", editorStaticHandler())
 
 	listener, err := net.Listen("tcp", net.JoinHostPort(*host, *port))
@@ -69,6 +75,26 @@ func runEdit(args []string) error {
 		openBrowser(address)
 	}
 	return http.Serve(listener, mux)
+}
+
+func (s *projectFileService) handleRender(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeAPIError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req renderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "invalid json request")
+		return
+	}
+	resp := renderapi.RenderYAML(req.Source)
+	if !resp.OK {
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+	writeJSON(w, resp)
 }
 
 func editorStaticHandler() http.Handler {

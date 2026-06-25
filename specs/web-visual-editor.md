@@ -56,7 +56,7 @@ Recommended architecture:
 
 | Layer | Responsibility |
 | --- | --- |
-| Web UI | Component palette, canvas interaction, tree view, inspector, editable source view, read-only YAML viewer, and file/project shell. |
+| Web UI | Component palette, canvas interaction, tree view, inspector, dedicated source mode, source-mode YAML viewer, and file/project shell. |
 | Go Wasm module | Parse `.uisketch.md`, parse YAML, normalize layout tree, validate edits, calculate sketch layout, render preview SVG, and serialize canonical YAML. |
 | Go CLI/library | Same packages used by the Wasm module for non-browser rendering and tests. |
 | Optional local Go server | Project file listing, file reads, file writes, new file creation, and launch-time file selection for local project editing mode. |
@@ -219,7 +219,7 @@ Spacer rendering:
 
 ## Tree Structure View
 
-The editor should show a tree structure view of the current layout document alongside the canvas, inspector, and source view.
+The editor should show a tree structure view of the current layout document alongside the canvas and inspector in visual mode.
 
 The tree view should present the semantic component hierarchy, not visual drawing primitives. Each row should identify:
 
@@ -244,21 +244,45 @@ The tree structure view must not become a second source of truth. It is a projec
 
 ## YAML Source Editing And Viewer
 
-The editor should provide both an editable source mode and a read-only YAML viewer.
+The editor should provide a top-level source editing mode matching the second layout in `web/webeditor.md`, plus a source-mode YAML viewer for normalized output.
+
+Source mode layout:
+
+- The primary editor tabs are `Visual Editor` and `Source`; selecting `Source` replaces the visual palette/canvas/inspector workspace with a source-focused split view.
+- Visual mode must not include a lower source display or embedded source viewer. Source text, normalized YAML, diff, validation, and ASCII output belong in the dedicated `Source` mode or explicit output actions.
+- The left side of source mode is an editable code editor for the canonical `.uisketch.md` document or the focused selected `uisketch` fence body.
+- The right side of source mode is a preview area with `Preview(SVG)` and `Preview(ASCII)` tabs.
+- `Preview(SVG)` must render the same SVG output as the Go CLI renderer for the current last valid source.
+- `Preview(ASCII)` must render the same ASCII/text output as the Go CLI renderer for the current last valid source.
+- Source mode preview tabs should use the same renderer adapter and validation state as the visual editor preview. They must not introduce browser-only renderer behavior.
+- The source editor and visual editor operate on the same canonical source buffer and selected `uisketch` source region, so users can make a visual edit, refine the generated source by hand, then return to visual editing without importing or converting through another format.
 
 Editable source mode:
 
 - Allows direct editing of the canonical `.uisketch.md` source.
 - Allows focused editing of only the selected `uisketch` source fence body when the user does not need to edit frontmatter or Markdown notes.
+- Provides code-editor behavior suitable for structured source editing: line numbers, indentation support, bracket matching, search, and keyboard-friendly multiline editing.
+- Provides syntax highlighting for Markdown frontmatter, fenced `uisketch` blocks, and UI Layout DSL YAML.
+- Provides keyword and schema checks for known component names, root surface types, property keys, enum-like values, stack proportion syntax, and invalid nesting where the schema or validator can identify it.
+- Provides completion candidates for component types, common properties, root types, tab/stack/grid fields, and locally known element IDs when editing references such as anchors or selection-related properties.
+- Shows diagnostics inline or in a nearby findings list, using Go Wasm parser and validator findings as the source of truth. TypeScript-side editor checks may provide earlier hints, but they must not contradict accepted Go validation results.
 - Parses edits through the Go Wasm parser after debounce or explicit apply.
 - Updates canvas, tree, inspector, validation findings, SVG preview, share payload, and local draft after a valid edit.
 - Keeps invalid text in the source editor without overwriting the last valid parsed document.
 - Shows parse and validation errors with source locations when available.
 - Preserves non-sketch Markdown and frontmatter when only visual edits change a `uisketch` source fence body.
 
-Read-only YAML viewer:
+Shared source behavior:
 
-- Shows the current visual editing result as normalized YAML.
+- A valid source commit replaces the current editor document and rebuilds the visual canvas, tree, inspector, YAML viewer, source mode previews, output actions, share payload, local draft, and undo/redo snapshot from that same canonical source.
+- A visual edit serializes back into the selected `uisketch` source fence body and refreshes the source editor text. When the source editor is showing the full `.uisketch.md` document, non-sketch Markdown and frontmatter must be preserved around the updated fence body.
+- If the user has an invalid unsaved source buffer, visual edits must not silently discard it. The editor should either require the user to accept/revert the invalid text before visual editing changes the same source region, or keep the invalid buffer clearly marked as stale while visual editing continues from the last valid document.
+- Switching between `Visual Editor` and `Source` must preserve source cursor/selection state, selected visual element when it can be mapped, current preview tab, and validation navigation context as view state rather than canonical source.
+- When Go Wasm exposes source ranges, clicking a validation finding or a selected visual/tree element should navigate the code editor to the best matching source location. Missing ranges must fall back to the selected source region or root fence.
+
+Source-mode YAML viewer:
+
+- Shows the current visual editing result as normalized YAML inside the dedicated `Source` mode, not as a lower panel under the visual editor.
 - Updates immediately after canvas, tree, or inspector edits.
 - Is formatted by the same canonical serializer used for file save and download.
 - Is copyable to the clipboard and downloadable as raw `.yaml`.
@@ -708,9 +732,10 @@ The first browser editor slice should prove the high-risk assumption that the br
 
 In scope:
 
-- Minimal web shell with palette, canvas preview, inspector, and `.uisketch.md` source view.
+- Minimal web shell with palette, canvas preview, inspector, and dedicated `.uisketch.md` source mode.
+- Source editing mode matching the second `web/webeditor.md` layout, with a code editor on the left and SVG/ASCII preview tabs on the right.
 - Vite-based npm workspace package for the GitHub Pages app as specified by [Frontend Workspace Architecture](frontend-workspace.md).
-- Read-only YAML viewer that shows the current visual editing result as normalized YAML.
+- Source-mode YAML viewer that shows the current visual editing result as normalized YAML without adding a lower source panel to visual mode.
 - Tree structure view synchronized with canvas selection, inspector edits, source edits, validation findings, and drag-and-drop moves.
 - Go Wasm adapter that wraps parser, validator, YAML serializer, and SVG renderer operations.
 - Static GitHub Pages-compatible build with relative asset paths and fragment-based share URLs.
@@ -730,6 +755,8 @@ In scope:
 - Root component type selection in the inspector without allowing root deletion.
 - Edit `id`, root `title`, `label`, `action`, `anchor`, and `hint` fields.
 - Render SVG preview after each committed edit.
+- Render SVG and ASCII previews from source mode through the same Go Wasm renderer path used by the CLI.
+- Provide source editor highlighting, basic keyword/schema diagnostics, and completion for the first-slice component and property set.
 - Apply the default spacing profile in preview output.
 
 Out of scope:
@@ -758,7 +785,12 @@ Out of scope:
 - Hovering a non-root component reveals a delete affordance that removes that component without exposing delete on the root.
 - The root component can be changed between supported root surface types through the inspector and cannot be deleted.
 - The source view round-trips: editing `.uisketch.md` or a selected `uisketch` source fence body updates the canvas, and canvas edits update that fence body.
-- The read-only YAML viewer reflects visual edits as normalized YAML and can be copied or downloaded.
+- Visual mode has no lower source display; it is limited to palette/tree, canvas preview, and inspector/output controls.
+- Source mode follows the second `web/webeditor.md` layout with the active `Source` tab, editable code on the left, and `Preview(SVG)` / `Preview(ASCII)` tabs on the right.
+- Source mode previews are generated from the last valid source by the same Go renderer logic used by the CLI for SVG and ASCII/text output.
+- The source editor provides syntax highlighting, completion, and keyword/schema diagnostics for the supported UI Layout DSL component set.
+- A user can move between visual editing and source editing without changing documents or losing the shared canonical source state.
+- The source-mode YAML viewer reflects visual edits as normalized YAML and can be copied or downloaded.
 - The tree structure view round-trips with canvas and source edits, including selection, reorder, and validation markers.
 - The share button produces a URL that can restore the same canonical YAML in a fresh browser session.
 - Share payloads use a versioned short-key model before lz-string/base64 compression.
@@ -780,6 +812,7 @@ Out of scope:
 - Decide the canonical short-key symbol table and version migration policy for share payloads.
 - Decide whether tree drag-and-drop should support cross-container wrapping in the first slice or only same-parent reorder.
 - Decide whether the source editor should default to full `.uisketch.md` editing, focused YAML layout editing, or a split toggle.
+- Decide the concrete browser code editor implementation for source mode, such as CodeMirror, Monaco, or a smaller custom editor wrapper.
 - Decide the GitHub Pages base-path strategy for local preview, repository Pages, and custom domains.
 - Decide whether Wails packaging should be part of the first local project release or a later distribution step.
 

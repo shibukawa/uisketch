@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { canHaveChildren, isRootSurface } from "../model/component-catalog.js";
 import { createDefaultNode, createInitialRoot, createRoot } from "../model/document.js";
 import { parseSourceDocument, serializeSourceDocument } from "../model/source-document.js";
+import { parseLayoutYaml } from "../model/yaml.js";
 import { getNode, isDescendantPath, samePath } from "../model/tree.js";
 
 function snapshot({ root, selectedPath, nextId, rootSurfaceCache }) {
@@ -101,6 +102,17 @@ export const useEditorStore = create((set, get) => ({
   replaceDocumentFromSource(source, metadata = {}) {
     const root = parseSourceDocument(source);
     get().replaceDocument(root, { ...metadata, savePointSource: source });
+  },
+
+  applyLayoutYamlEdit(yaml) {
+    const root = parseLayoutYaml(yaml);
+    set((state) => ({
+      ...withHistory(state),
+      root,
+      selectedPath: [],
+      dragging: null,
+      hoveredDropTarget: null,
+    }));
   },
 
   markSaved(metadata = {}) {

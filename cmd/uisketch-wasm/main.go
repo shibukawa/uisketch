@@ -68,6 +68,10 @@ type wasmResponse struct {
 }
 
 func main() {
+	if input := js.Global().Get("uisketchWasmInput"); input.Type() == js.TypeString {
+		js.Global().Set("uisketchWasmOutput", encode(responseForLayout(input.String())))
+		return
+	}
 	js.Global().Set("uisketchLoadSource", js.FuncOf(loadSource))
 	js.Global().Set("uisketchLoadLayout", js.FuncOf(loadLayout))
 	js.Global().Set("uisketchRenderDocument", js.FuncOf(renderDocument))
@@ -97,14 +101,18 @@ func loadLayout(_ js.Value, args []js.Value) any {
 	if len(args) < 1 {
 		return encodeError(fmt.Errorf("loadLayout requires YAML text"))
 	}
-	node, err := layout.ParseYAML(args[0].String())
+	return encode(responseForLayout(args[0].String()))
+}
+
+func responseForLayout(source string) wasmResponse {
+	node, err := layout.ParseYAML(source)
 	if err != nil {
-		return encodeError(err)
+		return wasmResponse{OK: false, Error: err.Error(), Findings: []wasmFinding{{Severity: "error", Message: err.Error()}}}
 	}
 	root := fromLayout(node)
 	resp := responseForRoot(root)
-	resp.LayoutYAML = args[0].String()
-	return encode(resp)
+	resp.LayoutYAML = source
+	return resp
 }
 
 func renderDocument(_ js.Value, args []js.Value) any {
