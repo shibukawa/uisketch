@@ -1,3 +1,4 @@
+{"id": "req.frontend-workspace", "path": "specs/frontend-workspace.md", "type": "requirement", "title": "Frontend Workspace Architecture", "aliases": {}, "tags": {}, "facts": {"lifecycle.status": "draft"}, "document_set": "main"}
 {"id": "req.initial-implementation-slice", "path": "specs/initial-implementation-slice.md", "type": "requirement", "title": "Initial Implementation Slice", "aliases": {}, "tags": {}, "facts": {"lifecycle.status": "draft"}, "document_set": "main"}
 {"id": "req.markdown-embedding-workflow", "path": "specs/markdown-embedding-workflow.md", "type": "requirement", "title": "Markdown Embedding Workflow", "aliases": {}, "tags": {}, "facts": {"lifecycle.status": "draft"}, "document_set": "main"}
 {"id": "req.renderer-acceptance-tests", "path": "specs/renderer-acceptance-tests.md", "type": "requirement", "title": "Renderer Acceptance Tests", "aliases": {}, "tags": {}, "facts": {"lifecycle.status": "draft"}, "document_set": "main"}

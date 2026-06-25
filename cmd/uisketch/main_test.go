@@ -2,10 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"uisketch/internal/projectfiles"
 )
 
 func TestRenderReadsPositionalUisketchInput(t *testing.T) {
@@ -381,6 +386,99 @@ func TestMarkdownRejectsAbsoluteAssetDir(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
+}
+
+func TestProjectFileServiceListsReadsWritesAndCreatesFiles(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "sample.uisketch.md")
+	writeFile(t, input, sampleUisketchSource())
+	files, err := projectfiles.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := &projectFileService{files: files}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/files" {
+			service.handleFiles(w, r)
+			return
+		}
+		if r.URL.Path == "/api/file" {
+			service.handleFile(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/api/files")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var listed struct {
+		Files []projectfiles.ProjectFile `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&listed); err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Files) != 1 || listed.Files[0].Path != "sample.uisketch.md" {
+		t.Fatalf("unexpected file list: %#v", listed.Files)
+	}
+
+	readResp, err := http.Get(server.URL + "/api/file?path=sample.uisketch.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var read projectfiles.FileResponse
+	if err := json.NewDecoder(readResp.Body).Decode(&read); err != nil {
+		t.Fatal(err)
+	}
+	if read.Revision == "" || !strings.Contains(read.Source, "type: uisketch") {
+		t.Fatalf("unexpected read response: %#v", read)
+	}
+
+	writeBody := `{"path":"sample.uisketch.md","source":"updated","revision":"wrong"}`
+	req, err := http.NewRequest(http.MethodPut, server.URL+"/api/file", strings.NewReader(writeBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("conflict status = %d, want %d", resp.StatusCode, http.StatusConflict)
+	}
+
+	createBody := `{"path":"new/sketch.uisketch.md","source":"created"}`
+	req, err = http.NewRequest(http.MethodPost, server.URL+"/api/file", strings.NewReader(createBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("create status = %d, want 200", resp.StatusCode)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "new", "sketch.uisketch.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != "created" {
+		t.Fatalf("created body = %q", body)
+	}
+}
+
+func TestProjectFileServiceRejectsOutsideRoot(t *testing.T) {
+	files, err := projectfiles.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := &projectFileService{files: files}
+	if _, err := service.cleanPath("../outside.uisketch.md"); err == nil {
+		t.Fatal("cleanPath returned nil error for outside path")
+	}
 }
 
 func withIO(in *strings.Reader, out, errOut *bytes.Buffer, fn func()) {

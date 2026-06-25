@@ -1,5 +1,16 @@
 # Backlinks
 
+## Frontend Workspace Architecture (req.frontend-workspace)
+
+- links_to from VSCode Extension
+- links_to from VSCode Extension
+- links_to from VSCode Extension
+- relates_to from VSCode Extension
+- links_to from Web Visual Editor
+- links_to from Web Visual Editor
+- links_to from Web Visual Editor
+- relates_to from Web Visual Editor
+
 ## Initial Implementation Slice (req.initial-implementation-slice)
 
 - relates_to from Renderer Acceptance Tests
@@ -8,6 +19,7 @@
 
 ## Markdown Embedding Workflow (req.markdown-embedding-workflow)
 
+- relates_to from Frontend Workspace Architecture
 - links_to from Sketch Wireframe Renderer
 - relates_to from Sketch Wireframe Renderer
 - links_to from UI Layout DSL
@@ -34,6 +46,7 @@
 
 ## Sketch Wireframe Renderer (req.sketch-wireframe-renderer)
 
+- relates_to from Frontend Workspace Architecture
 - relates_to from Initial Implementation Slice
 - relates_to from Markdown Embedding Workflow
 - relates_to from Renderer Acceptance Tests
@@ -77,6 +90,7 @@
 
 ## UI Layout DSL (req.ui-layout-dsl)
 
+- relates_to from Frontend Workspace Architecture
 - relates_to from Initial Implementation Slice
 - links_to from Markdown Embedding Workflow
 - relates_to from Markdown Embedding Workflow
@@ -91,6 +105,7 @@
 - relates_to from UI Sketch Library Overview
 - relates_to from UI Validation Rules
 - relates_to from VSCode Extension
+- links_to from Web Visual Editor
 - links_to from Web Visual Editor
 - relates_to from Web Visual Editor
 
@@ -122,6 +137,7 @@
 
 ## UI Validation Rules (req.ui-validation-rules)
 
+- relates_to from Frontend Workspace Architecture
 - relates_to from Markdown Embedding Workflow
 - relates_to from Sketch Wireframe Renderer
 - relates_to from UI Component Catalog
@@ -146,16 +162,22 @@
 
 ## VSCode Extension (req.vscode-extension)
 
+- links_to from Frontend Workspace Architecture
+- relates_to from Frontend Workspace Architecture
 - links_to from Markdown Embedding Workflow
 - relates_to from Markdown Embedding Workflow
 - relates_to from UI Sketch Library Overview
 
 ## Web Visual Editor (req.web-visual-editor)
 
+- links_to from Frontend Workspace Architecture
+- links_to from Frontend Workspace Architecture
+- relates_to from Frontend Workspace Architecture
 - links_to from Initial Implementation Slice
 - relates_to from Initial Implementation Slice
 - relates_to from Sketch Wireframe Renderer
 - relates_to from UI Layout DSL
 - relates_to from UI Sketch File Format
 - relates_to from UI Sketch Library Overview
+- links_to from Uisketch CLI
 - relates_to from VSCode Extension

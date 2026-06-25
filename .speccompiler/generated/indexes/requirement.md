@@ -1,5 +1,6 @@
 # requirement index
 
+- [Frontend Workspace Architecture](../../specs/frontend-workspace.md) `req.frontend-workspace`
 - [Initial Implementation Slice](../../specs/initial-implementation-slice.md) `req.initial-implementation-slice`
 - [Markdown Embedding Workflow](../../specs/markdown-embedding-workflow.md) `req.markdown-embedding-workflow`
 - [Renderer Acceptance Tests](../../specs/renderer-acceptance-tests.md) `req.renderer-acceptance-tests`

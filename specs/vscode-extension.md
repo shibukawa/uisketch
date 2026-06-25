@@ -12,6 +12,7 @@ tags:
   - "markdown"
   - "preview"
   - "schema"
+  - "frontend"
 facts:
   lifecycle.status: "draft"
 ---
@@ -23,6 +24,8 @@ facts:
 The VSCode extension lets authors preview `uisketch` diagrams inside Markdown and `.uisketch.md` files without running a build that rewrites files. It should also make embedded YAML easier to edit by applying the UI Layout DSL schema to supported source regions, including fenced `uisketch` blocks and generated `uisketch:source` HTML comments.
 
 The extension is an authoring and review surface for [Markdown Embedding Workflow](markdown-embedding-workflow.md), [UI Sketch File Format](ui-sketch-file-format.md), and [Sketch Wireframe Renderer](sketch-wireframe-renderer.md). It must not introduce a second persisted diagram format.
+
+The extension is the VSCode entry point of [Frontend Workspace Architecture](frontend-workspace.md). It should be built as its own npm workspace package and should share schema, source-region, and renderer/validator adapter code with the GitHub Pages web editor.
 
 ## Product Intent
 
@@ -86,6 +89,8 @@ The implementation may use VSCode language features, a YAML language server sche
 
 Schema validation should be backed by the same rule set used by [UI Validation Rules](ui-validation-rules.md) where practical. Editor-only schema checks may be faster or more local, but they must not contradict the Go validator.
 
+The schema may be manually maintained. Automatic schema generation from Go structures is not required because the DSL includes shorthand forms and mixed string/object shapes that often need hand-authored schema rules for good editor behavior.
+
 ## Live Rendering Pipeline
 
 The preferred live rendering pipeline is:
@@ -98,15 +103,38 @@ Current VSCode text buffer
   -> Markdown preview HTML or webview SVG
 ```
 
+The source region scanner should use the shared source-region model defined in [Frontend Workspace Architecture](frontend-workspace.md) so VSCode previews, bake/rebuild commands, and browser import/export agree on recognized source identities.
+
 The renderer should be the same Go implementation used by the CLI, exposed to the extension through one of these integration modes:
 
 | Mode | Use |
 | --- | --- |
-| Bundled CLI process | Preferred first implementation when startup and file watching are acceptable. |
-| Go Wasm module in webview or extension host | Preferred later when the browser editor and VSCode extension can share the Wasm adapter. |
+| Go Wasm module in the extension host | Recommended first implementation for VSCode because diagnostics, commands, source scanning, and preview generation all originate from the extension host. |
+| Go Wasm module in a webview | Useful only when an isolated interactive webview needs to render or validate independently. It adds message-passing and CSP complexity for diagnostics. |
+| Bundled CLI process | Acceptable fallback when Wasm runtime integration blocks progress or startup cost is acceptable. |
 | Language server process | Useful when schema, diagnostics, preview, and bake commands need a long-lived service. |
 
 The extension may cache parsed results and SVG output by document version and source region identity. Caches must be invalidated when the editor buffer changes, renderer options change, or related schema files change.
+
+When Wasm is selected for the first extension slice, the extension package should consume the shared `@uisketch/wasm` wrapper from the extension host. Webviews should primarily display generated SVG or UI produced by the extension, not own the canonical parser/validator state. When a bundled CLI or language server is selected later, the extension should still hide that choice behind an internal interface compatible with the shared renderer/validator operation shapes.
+
+Full visual drag-and-drop editing is intentionally not part of the VSCode extension. VSCode should remain focused on Markdown preview, `.uisketch.md` preview, embedded YAML editing assistance, diagnostics, bake/rebuild, and export commands. Users who need the large-canvas visual editing workflow should use the GitHub Pages web editor.
+
+## Workspace Packaging
+
+The VSCode extension should live in its own npm workspace package.
+
+Packaging requirements:
+
+- Build extension-host code separately from webview code.
+- Package UI Layout DSL schema assets from the shared schema workspace package.
+- Package the selected renderer/validator integration path: Wasm assets, bundled CLI, or language-server binary.
+- Keep VSCode API imports out of shared frontend packages.
+- Reuse the shared source-region identity model for Markdown preview, diagnostics, bake, rebuild, and export commands.
+- Reuse the shared result/error shape for parser, validator, renderer, and serializer operations.
+- Expose npm scripts that can be called by the root workspace build.
+
+The extension package must not depend on the GitHub Pages browser app package. If both entry points need shared visual components later, those components should move to a dedicated shared UI package after concrete duplication appears.
 
 ## Bake And Rebuild Commands
 
@@ -152,12 +180,16 @@ Required security rules:
 - Bake and export commands must prevent path traversal outside the selected workspace or configured output directory.
 - The extension must not execute arbitrary commands from Markdown frontmatter, YAML fields, comments, or workspace files.
 
+Diagnostic payloads do not need to share one universal frontend format with the browser editor. The extension should adapt parser, schema, and renderer findings into VSCode diagnostics and code actions with VSCode-native ranges and severities. Shared lower-level data may include source range, element path, severity, and message when available.
+
 ## First Runnable Extension Slice
 
 In scope:
 
+- npm workspace package scaffold and build output for the VSCode extension as specified by [Frontend Workspace Architecture](frontend-workspace.md).
 - Recognize `uisketch` and `uisketch:svg` fenced blocks in Markdown.
 - Render non-destructive SVG previews in Markdown preview or a side webview.
+- Run Go Wasm in the extension host for parser, validator, and renderer operations unless implementation findings prove a fallback is needed.
 - Recognize explicit `uisketch` source fences in `.uisketch.md` files.
 - Run validation diagnostics for malformed YAML and unknown component types.
 - Provide schema-backed completions for root components, `children`, `id`, `title`, `label`, `action`, `anchor`, `hint`, and `prompt`.
@@ -167,6 +199,8 @@ In scope:
 Out of scope:
 
 - Full visual drag-and-drop editing inside VSCode.
+- Visual Basic or Delphi style canvas editing inside VSCode.
+- VSCode-specific keyboard workflows for visual editing.
 - Multi-file project graph validation beyond the current file.
 - PNG/PDF export.
 - Remote workspace persistence or account features.
@@ -183,10 +217,11 @@ Out of scope:
 - Rebuilding a baked Markdown file updates the SVG asset from the adjacent `uisketch:source` comment.
 - Bake and rebuild commands do not write outside the configured output directory without explicit user choice.
 - Preview output and baked SVG output are generated by the same renderer behavior for the same YAML input and renderer options.
+- The extension package builds from the root npm workspace scripts and includes the schema and selected renderer/validator integration assets.
 
 ## Open Decisions
 
-- Decide whether the first implementation invokes a bundled CLI, a language server, or a Wasm renderer.
+- Decide whether the recommended extension-host Wasm path needs a worker or language-server fallback after implementation measurement.
 - Decide how the UI Layout DSL schema is packaged for VSCode and shared with CLI validation.
 - Decide the default baked asset folder for Markdown files.
 - Decide whether code actions should offer "Bake this source", "Rebuild this output", and "Extract to .uisketch.md".
@@ -200,6 +235,7 @@ Out of scope:
 - [UI Validation Rules](ui-validation-rules.md)
 - [Sketch Wireframe Renderer](sketch-wireframe-renderer.md)
 - [Web Visual Editor](web-visual-editor.md)
+- [Frontend Workspace Architecture](frontend-workspace.md)
 
 ## Native-Language Summary
 

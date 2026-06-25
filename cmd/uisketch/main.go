@@ -31,13 +31,15 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: uisketch render [--format svg|ascii] [--output <file>] [input]\n       uisketch markdown [--output <doc.md> | --overwrite] [--format svg|ascii|source] [--asset-dir assets] [input]")
+		return fmt.Errorf("usage: uisketch render [--format svg|ascii] [--output <file>] [input]\n       uisketch markdown [--output <doc.md> | --overwrite] [--format svg|ascii|source] [--asset-dir assets] [input]\n       uisketch edit [--project <dir>] [--host 127.0.0.1] [--port <port>] [--no-open] [file]")
 	}
 	switch args[0] {
 	case "render":
 		return runRender(args[1:])
 	case "markdown":
 		return runMarkdown(args[1:])
+	case "edit":
+		return runEdit(args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}

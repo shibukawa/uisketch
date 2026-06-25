@@ -73,7 +73,34 @@
   - Related: `req.ui-layout-dsl`, `req.ui-validation-rules`, `req.vscode-extension`
 - [ ] Decide frontend framework and build tooling for the browser visual editor shell.
   - Type: decision
-  - Related: `req.web-visual-editor`
+  - Related: `req.web-visual-editor`, `req.frontend-workspace`
+- [ ] Create npm workspace package structure for GitHub Pages web app, VSCode extension, shared core, shared Wasm wrapper, and shared schema package.
+  - Type: implementation
+  - Related: `req.frontend-workspace`, `req.web-visual-editor`, `req.vscode-extension`
+- [ ] Define root npm scripts for build, build:web, build:vscode, build:wasm, dev:web, typecheck, test, and package:vscode.
+  - Type: implementation
+  - Related: `req.frontend-workspace`
+- [x] Decide whether generated Go Wasm artifacts are committed or regenerated during each frontend build.
+  - Type: decision
+  - Related: `req.frontend-workspace`, `req.web-visual-editor`, `req.vscode-extension`
+- [ ] Add GitHub Actions workflow to regenerate Go Wasm, validate specs, run Go tests, typecheck frontend packages, and build both frontend entry points.
+  - Type: implementation
+  - Related: `req.frontend-workspace`
+- [ ] Archive or remove the old `web/` prototype after the workspace web package preserves the `web/webeditor.md` first-screen design.
+  - Type: cleanup
+  - Related: `req.frontend-workspace`, `req.web-visual-editor`
+- [ ] Implement shared TypeScript source-region model for browser import/export and VSCode Markdown preview workflows.
+  - Type: implementation
+  - Related: `req.frontend-workspace`, `req.vscode-extension`, `req.markdown-embedding-workflow`
+- [ ] Package UI Layout DSL schema as a shared npm workspace package used by VSCode diagnostics and browser validation UI.
+  - Type: implementation
+  - Related: `req.frontend-workspace`, `req.vscode-extension`, `req.ui-layout-dsl`, `req.ui-validation-rules`
+- [ ] Implement typed shared Go Wasm wrapper for parser, validator, renderer, serializer, and editor mutation operations.
+  - Type: implementation
+  - Related: `req.frontend-workspace`, `req.web-visual-editor`, `req.vscode-extension`
+- [ ] Expose source range mapping from parser/Wasm results for YAML elements, source regions, and validation findings.
+  - Type: implementation
+  - Related: `req.frontend-workspace`, `req.web-visual-editor`, `req.vscode-extension`, `req.ui-validation-rules`
 - [x] Define Go Wasm adapter API and stable error/result encoding for editor operations.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`, `req.ui-validation-rules`
@@ -83,9 +110,27 @@
 - [ ] Implement default spacing profile shared by SVG renderer and browser editor preview.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`, `req.ui-layout-dsl`
-- [ ] Decide local file access model for the first browser editor slice.
+- [x] Decide local file access model for the browser editor.
   - Type: decision
+  - Related: `req.web-visual-editor`, `req.uisketch-cli`
+- [x] Implement dirty-document confirmation for new sketch, saved/local file load, shared URL initial restore, browser close, and Wails close hook paths.
+  - Type: implementation
   - Related: `req.web-visual-editor`
+- [x] Implement browser-mode named localStorage save, load, rename, delete, and autosave recovery separation.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [x] Implement local project file API for project-root file listing, read, write with revision tokens, and new `.uisketch.md` creation.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.uisketch-cli`
+- [x] Add `uisketch edit [file]` local server command and initial-file open behavior.
+  - Type: implementation
+  - Related: `req.uisketch-cli`, `req.web-visual-editor`
+- [x] Design host file API abstraction so local HTTP server and future Wails bindings can share editor file operations.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [x] Add minimal Wails standalone app scaffold that reuses the shared project file service and web editor build output.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.uisketch-cli`
 - [ ] Define versioned short-key symbol table for share URL payloads.
   - Type: documentation
   - Related: `req.web-visual-editor`
@@ -101,12 +146,66 @@
 - [ ] Implement converted ASCII/text output preview, copy, and `.txt` download in the browser editor.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.sketch-wireframe-renderer`
-- [ ] Implement localStorage autosave, restore, and discard behavior for editor drafts.
+- [x] Implement localStorage autosave, restore, and discard behavior for editor drafts.
   - Type: implementation
   - Related: `req.web-visual-editor`
+- [ ] Implement YAML snapshot-based undo and redo across visual edits and accepted source edits.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
 - [ ] Implement tree structure view synchronized with canvas, inspector, source edits, and validation findings.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.ui-layout-dsl`, `req.ui-validation-rules`
+- [ ] Implement compact drag insertion targets that expand and highlight only during active drag/drop operations.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Refine canvas drag insertion highlighting so only the pointer-hit drop target expands and receives strong highlight.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Split the visual editor palette into layout, surface, and visible component groups.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Remove root surface entries from the tool palette and keep root surface changes in the inspector selector.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Style layout-only canvas components distinctly from visible/content components.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Distinguish selected layout-only canvas components from selected visible/content components using dashed versus solid selection treatment.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Reduce canvas leaf component debug chrome so labels, buttons, inputs, tables, images, and lists render closer to authored UI.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Add hover highlight and top-right delete affordance for non-root canvas components.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Change the canvas hover delete affordance to a compact round `×` button.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Add inspector root type selector while keeping the root component non-deletable.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
+- [ ] Preserve hidden root surface fields across root type switches while hiding unsupported controls for surfaces such as `menu`.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
+- [ ] Render browser, window, and dialog root chrome with appropriate navigation and window control affordances.
+  - Type: implementation
+  - Related: `req.web-visual-editor`
+- [ ] Render spacer widgets with directional tension indicators and make them absorb remaining stack space.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
+- [ ] Add palette/default-node support for `tabs`, `grid`, `spacer`, and root surface components not present in the MVP palette.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-component-catalog`, `req.ui-layout-dsl`
+- [ ] Replace raw `tabs.labels` inspector editing with a label item list and separate selected-tab control.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
+- [ ] Allow temporary invalid numeric inspector drafts while keeping canvas layout on the last valid value.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
+- [ ] Fix browser editor grid rendering so `grid.columns: 2` lays out children left-to-right across two columns.
+  - Type: implementation
+  - Related: `req.web-visual-editor`, `req.ui-layout-dsl`
 - [ ] Decide first-slice scope for tree drag-and-drop: same-parent reorder only or cross-container wrapping.
   - Type: decision
   - Related: `req.web-visual-editor`

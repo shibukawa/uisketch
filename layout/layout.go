@@ -33,6 +33,7 @@ type Node struct {
 	Address     string
 	Hint        string
 	Prompt      string
+	Data        string
 	Name        string
 	Purpose     string
 	Badge       string
@@ -205,6 +206,8 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			if ok {
 				out.Prompt = prompt
 			}
+		case "data":
+			out.Data = scalarString(prop.Value)
 		case "name":
 			out.Name = scalarString(prop.Value)
 		case "purpose":
@@ -269,7 +272,7 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			if child != nil {
 				out.Children = []*Node{child}
 			}
-		case "data", "highlight", "fallback":
+		case "highlight", "fallback":
 			continue
 		default:
 			if suggestion := closestKnownProperty(name); suggestion != "" {

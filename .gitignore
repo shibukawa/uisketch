@@ -1,3 +1,14 @@
 cmd/uisketch/uisketch
 cmd/uisketch/uisketch.exe
 .DS_Store
+node_modules/
+dist/
+packages/*/dist/
+packages/*/.vite/
+coverage/
+*.wasm
+wasm_exec.js
+build/
+wailsjs/
+desktop_assets/assets/
+package.json.md5

@@ -29,12 +29,15 @@ The first CLI surface should provide these commands:
 | --- | --- |
 | `uisketch render [options] [input] [index]` | Render one selected `uisketch` fence or generated `uisketch:source` comment from a Markdown file to SVG or ASCII. |
 | `uisketch markdown [options] [input]` | Build or rebuild ordinary Markdown documents that contain embedded `uisketch` fences or generated `uisketch:source` comments. |
+| `uisketch edit [options] [file]` | Start the local visual editor server for project file editing, optionally opening `file` immediately. |
 
-Both commands treat `input` as a positional argument. When `input` is omitted or is `-`, the command reads from standard input.
+`render` and `markdown` treat `input` as a positional argument. When `input` is omitted or is `-`, those commands read from standard input.
+
+`edit` is an interactive local development command and does not read from standard input. When `file` is supplied, it is resolved inside the selected project root and opened as the initial editor document.
 
 ## Input Arguments
 
-`input` is a required command argument in the command contract, with standard input as the default source when no filesystem path is supplied.
+For `render` and `markdown`, `input` is a required command argument in the command contract, with standard input as the default source when no filesystem path is supplied.
 
 Rules:
 
@@ -121,6 +124,37 @@ Output format selection:
 - For forced SVG output, the builder writes SVG assets and replaces each sketch with a Markdown image reference plus a `uisketch:source` comment whose format metadata is `svg`.
 - For forced ASCII output, the builder writes no SVG assets and replaces each sketch with a fenced `text` block plus a `uisketch:source` comment whose format metadata is `txt`.
 
+## Edit Command
+
+Usage:
+
+```text
+uisketch edit [--project <dir>] [--host 127.0.0.1] [--port <port>] [--no-open] [file]
+```
+
+Behavior:
+
+1. Resolve the project root from `--project`, or use the current working directory when omitted.
+2. Start a local Go HTTP server that serves the browser editor UI and a project file API.
+3. Restrict file API operations to the resolved project root after cleaning paths and resolving symlinks.
+4. When `file` is supplied, resolve it relative to the project root unless it is absolute, reject it if it escapes the project root, and pass it to the editor as the initial file to open.
+5. If the initial file exists, open it in local project mode after startup.
+6. If the initial file does not exist, let the editor offer to create it as a new `.uisketch.md` file after user confirmation.
+7. Open the local editor URL in the default browser unless `--no-open` is supplied.
+8. Bind to loopback by default. Non-loopback hosts require explicit user intent through `--host`.
+
+The local file API should support:
+
+- Listing editable project files.
+- Reading file content with a project-relative path and revision token.
+- Writing canonical `.uisketch.md` content back to an existing file only when the client supplies the last known revision token.
+- Creating a new `.uisketch.md` file from a safe starter document.
+- Reporting structured errors for outside-root paths, unsupported paths, permission failures, missing files, and external modification conflicts.
+
+The edit command is the CLI entry point for [Web Visual Editor](web-visual-editor.md) local project mode. Browser-mode persistence features such as named `localStorage` saves and share URL persistence must be hidden or disabled in the local project session.
+
+Wails packaging may reuse the same Go file service later, but `uisketch edit` remains the command-line path for launching a local browser-backed editor.
+
 ## Diagnostics
 
 CLI diagnostics should be concise and source-oriented:
@@ -129,12 +163,14 @@ CLI diagnostics should be concise and source-oriented:
 - Rendered or converted document output goes to standard output only for commands whose contract is stdout-oriented. `markdown` writes to `--output` or `--overwrite` and should not emit the rebuilt Markdown to stdout.
 - Invalid input type should identify the detected frontmatter type and expected type `uisketch`.
 - Missing path with standard input unavailable should produce usage text that shows the positional input form.
+- `edit` server startup diagnostics should include the project root, bound URL, initial file when supplied, and a concise reason when a requested port or file path is unavailable.
 
 ## Non-Goals
 
 - The CLI does not require or render from `screen` concept files.
 - The CLI does not resolve product-level action catalogs, flow graphs, or requirement metadata as part of `render`.
 - The CLI does not persist editor-only state such as selection, hover, zoom, or pan.
+- The CLI edit server is not a cloud sync service and must not expose project file writes beyond the selected local project root.
 
 ## Related Documents
 
@@ -145,4 +181,4 @@ CLI diagnostics should be concise and source-oriented:
 
 ## Native-Language Summary
 
-`uisketch` CLI は Markdown 内の明示的な `uisketch` fence と生成済み `uisketch:source` comment だけを描画・変換対象にする。`## Layout` や `## レイアウト` のような見出し配下にある通常の `yaml` fence は、render と markdown のどちらでも自動検出しない。`render` は `screen` concept を入力にせず、`uisketch render [input] [index]` の positional input から N 個目の埋め込み図を読む。`index` は 1-origin で省略時は 1 とする。`input` を省略した場合または `-` の場合は標準入力を読む。主入力は `--screen` や `--input` のようなオプションにしない。`--format` 省略時に `--output` が `.svg` 拡張子なら `--format svg` と同じ扱いにし、明示された `--format` は拡張子より優先する。`markdown` は通常 Markdown 内の明示的な `uisketch` fence と `uisketch:source` comment だけを処理し、`--output` または `--overwrite` のどちらかを必須にする。`--overwrite` は入力ファイルを上書きし、SVG assets は入力ファイル基準の相対 `--asset-dir` に書く。`--output` は出力先ファイルへ書き、SVG assets は出力先ファイル基準の相対 `--asset-dir` に書く。`--asset-dir` は相対パスだけを許可し、絶対パスや宛先ディレクトリ外へ出るパスはエラーにする。`markdown --format svg|ascii|source` で全 sketch の出力種別を強制または source 指定どおりにできる。
+`uisketch` CLI は Markdown 内の明示的な `uisketch` fence と生成済み `uisketch:source` comment だけを描画・変換対象にする。`## Layout` や `## レイアウト` のような見出し配下にある通常の `yaml` fence は、render と markdown のどちらでも自動検出しない。`render` は `screen` concept を入力にせず、`uisketch render [input] [index]` の positional input から N 個目の埋め込み図を読む。`index` は 1-origin で省略時は 1 とする。`input` を省略した場合または `-` の場合は標準入力を読む。主入力は `--screen` や `--input` のようなオプションにしない。`--format` 省略時に `--output` が `.svg` 拡張子なら `--format svg` と同じ扱いにし、明示された `--format` は拡張子より優先する。`markdown` は通常 Markdown 内の明示的な `uisketch` fence と `uisketch:source` comment だけを処理し、`--output` または `--overwrite` のどちらかを必須にする。`--overwrite` は入力ファイルを上書きし、SVG assets は入力ファイル基準の相対 `--asset-dir` に書く。`--output` は出力先ファイルへ書き、SVG assets は出力先ファイル基準の相対 `--asset-dir` に書く。`--asset-dir` は相対パスだけを許可し、絶対パスや宛先ディレクトリ外へ出るパスはエラーにする。`markdown --format svg|ascii|source` で全 sketch の出力種別を強制または source 指定どおりにできる。`edit` はローカル Go server を起動して visual editor の local project mode を開く。`uisketch edit path/to/file.uisketch.md` のようにファイル名を指定すると、そのファイルを初期 document として開き、保存時は project root 内の実ファイルを revision token 付きで更新する。

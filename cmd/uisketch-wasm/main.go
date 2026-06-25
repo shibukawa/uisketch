@@ -26,6 +26,7 @@ type wasmNode struct {
 	Address  string     `json:"address,omitempty"`
 	Hint     string     `json:"hint,omitempty"`
 	Prompt   string     `json:"prompt,omitempty"`
+	Data     string     `json:"data,omitempty"`
 	Name     string     `json:"name,omitempty"`
 	Purpose  string     `json:"purpose,omitempty"`
 	Badge    string     `json:"badge,omitempty"`
@@ -172,6 +173,7 @@ func fromLayout(n *layout.Node) *wasmNode {
 		Address: n.Address,
 		Hint:    n.Hint,
 		Prompt:  n.Prompt,
+		Data:    n.Data,
 		Name:    n.Name,
 		Purpose: n.Purpose,
 		Badge:   n.Badge,
@@ -207,6 +209,7 @@ func toLayout(n *wasmNode) *layout.Node {
 		Address: n.Address,
 		Hint:    n.Hint,
 		Prompt:  n.Prompt,
+		Data:    n.Data,
 		Name:    n.Name,
 		Purpose: n.Purpose,
 		Badge:   n.Badge,
@@ -286,6 +289,7 @@ func formatNode(lines *[]string, n *wasmNode, indent int, listItem bool) {
 		{"address", n.Address},
 		{"hint", n.Hint},
 		{"prompt", n.Prompt},
+		{"data", n.Data},
 		{"name", n.Name},
 		{"purpose", n.Purpose},
 		{"badge", n.Badge},

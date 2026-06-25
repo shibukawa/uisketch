@@ -11,6 +11,7 @@ tags:
   - "editor"
   - "web"
   - "wasm"
+  - "frontend"
 facts:
   lifecycle.status: "draft"
 ---
@@ -23,6 +24,8 @@ The web visual editor lets users create and edit UI sketch layouts in a browser 
 
 The editor is an authoring surface for [UI Layout DSL](ui-layout-dsl.md), not a separate drawing format. It must preserve semantic component structure so the same source can be validated and rendered by [Sketch Wireframe Renderer](sketch-wireframe-renderer.md).
 
+The browser editor is the GitHub Pages entry point of [Frontend Workspace Architecture](frontend-workspace.md). It should be built as a static Vite application inside the npm workspace and should consume shared TypeScript packages and the Go Wasm adapter rather than keeping a separate one-off browser implementation.
+
 ## Product Intent
 
 The editor should make the YAML-first model easier to author without turning the product into Figma or a pixel-perfect design tool.
@@ -30,6 +33,7 @@ The editor should make the YAML-first model easier to author without turning the
 Primary user workflows:
 
 - Pick a root surface such as `browser` or `window`.
+- Start a new browser, window, mobile, dialog, or menu sketch without losing unsaved work accidentally.
 - Drag components such as `button`, `input`, `table`, `list`, `image`, `vstack`, and `hstack` from a palette.
 - Drop components into valid containers or between sibling components.
 - Reorder components by drag and drop.
@@ -41,7 +45,8 @@ Primary user workflows:
 - Save the canonical `.uisketch.md` file, not an editor-private scene graph.
 - Share the current sketch through a URL that embeds a compressed layout payload.
 - Copy source code, copy converted text output, and download the current layout, preview SVG, or share payload as local files.
-- Save and restore recent editor work from browser `localStorage`.
+- Save named browser-local documents to `localStorage`, load them later, and delete obsolete saved documents.
+- In local project mode, open, create, and save `.uisketch.md` files through a local Go backend instead of browser storage.
 
 ## Architecture Recommendation
 
@@ -54,6 +59,8 @@ Recommended architecture:
 | Web UI | Component palette, canvas interaction, tree view, inspector, editable source view, read-only YAML viewer, and file/project shell. |
 | Go Wasm module | Parse `.uisketch.md`, parse YAML, normalize layout tree, validate edits, calculate sketch layout, render preview SVG, and serialize canonical YAML. |
 | Go CLI/library | Same packages used by the Wasm module for non-browser rendering and tests. |
+| Optional local Go server | Project file listing, file reads, file writes, new file creation, and launch-time file selection for local project editing mode. |
+| Shared frontend workspace packages | Host-neutral TypeScript document types, schema access, source-region identities, share-payload helpers, and typed Wasm wrapper shared with the VSCode extension. |
 
 Wasm is the preferred approach for the first browser editor because it reduces logic drift between the CLI and browser. The editor should not reimplement layout validation or rendering behavior in TypeScript except for immediate UI affordances such as hover targets and drag ghost placement.
 
@@ -71,6 +78,45 @@ formatSource(document, frontmatter, notes) -> canonical .uisketch.md source
 encodeSharePayload(document) -> compact payload object or string
 decodeSharePayload(payload) -> editor document, validation findings, preview SVG
 ```
+
+The browser package should import these operations through the shared `@uisketch/wasm` wrapper defined in [Frontend Workspace Architecture](frontend-workspace.md). Browser-only code may manage drag events, hit testing, localStorage, import/export, and GitHub Pages routing, but it should not bypass the shared adapter for document mutations that affect canonical YAML.
+
+## Persistence Modes
+
+The editor has two persistence modes with different capabilities.
+
+| Mode | Entry point | Persistence | Sharing | Intended use |
+| --- | --- | --- | --- | --- |
+| Browser mode | Static web app such as GitHub Pages or local Vite dev server | Named records in browser `localStorage`, plus download/import | Enabled through `#s=<encoded-payload>` URLs | Quick sketches, demos, and shareable examples without a backend. |
+| Local project mode | `uisketch edit` launched local Go server or Wails shell | Files inside the selected project root | Disabled by default | Editing repository files directly with explicit save semantics. |
+
+The active mode must be visible in the file/project shell. The UI should not offer `localStorage` save/load/delete or share URL controls in local project mode, because those controls would create competing persistence models. Local project mode may still offer copy and download actions for generated outputs.
+
+Switching between modes is an application relaunch or explicit open action, not an automatic background transition. A static GitHub Pages page must not attempt to write local files. A local project mode session must not silently sync edits to browser `localStorage`.
+
+## Unsaved Change Protection
+
+The editor must track whether the current valid canonical source differs from the last acknowledged save point.
+
+Save points:
+
+- Browser mode save point is the last explicit named `localStorage` save, imported file load that has not been edited, shared URL load that has not been edited, or newly created starter document before the first edit.
+- Local project mode save point is the last successful backend file read or write for the current file path.
+- Download, copy, preview render, and share URL generation are not save points.
+- Autosave drafts may preserve recovery data, but autosave alone must not clear the unsaved indicator.
+
+Operations that would replace or close dirty work must ask for confirmation before proceeding:
+
+- New browser, New window, New mobile, New dialog, New menu, or any equivalent new-root shortcut.
+- Loading another browser-local saved document.
+- Importing a file or loading a shared URL into the active editor after the initial page load.
+- Opening another local project file.
+- Creating a new local project file in the active editor.
+- Deleting the current browser-local saved document when it is the active dirty document.
+- Closing or reloading the browser tab/window while dirty.
+- Closing a Wails standalone window while dirty.
+
+The confirmation must state that unsaved changes will be discarded. If the user cancels, the current editor document and dirty state remain unchanged. Browser `beforeunload` handling may use the browser-native message, but in-app navigation and new-document actions should use an editor-owned confirmation dialog.
 
 ## Editor Document Model
 
@@ -94,8 +140,82 @@ Transient editor state:
 - Source editor cursor position.
 - Expanded/collapsed tree view nodes.
 - Tree view filter text or search state.
+- Undo/redo cursor and source snapshot history metadata.
 
 Transient state must not be written into the canonical YAML layout.
+
+## Palette And Root Surface Selection
+
+The component palette should contain insertable canvas components only.
+
+Required behavior:
+
+- Root surface types such as `browser`, `window`, `mobile`, `dialog`, and `menu` should not appear as draggable palette items.
+- The root surface type should be changed through the root component inspector selector.
+- Changing the root surface type must preserve child layout content.
+- Surface-specific hidden fields should be preserved while switching surfaces when doing so helps restore user input later. For example, a previous `browser.address` value and a previous titled-surface `title` value may be retained in editor state or hidden root metadata when the user switches to `menu`, then restored if the user switches back to a surface that uses that field.
+- Hidden preserved fields must not be emitted as visible controls or canvas chrome for a surface that does not support them.
+- The `menu` root surface does not have a visible `title` property in the inspector and does not render a title on the canvas.
+
+## Canvas Interaction Details
+
+The visual editor canvas should keep drag, hover, selection, and delete affordances lightweight so the authored UI remains easy to inspect.
+
+Drag insertion targets:
+
+- Insertion targets should be compact and visually quiet when no drag operation is active.
+- Starting a drag operation must not make every possible insertion target look selected or strongly highlighted.
+- During a drag operation, only the insertion target currently hit by the pointer should expand, show insertion affordance text if needed, and use a strong highlight.
+- Non-hit insertion targets may remain available for hit testing but should stay visually compact and low-contrast.
+- The hovered insertion target should communicate the exact sibling position or container position where the component will be inserted.
+- Horizontal containers such as `hstack` should show insertion targets as vertical separators, while vertical containers should show them as horizontal separators.
+
+Canvas selection:
+
+- The selected component outline must distinguish layout-only components from visible/content components.
+- Layout-only components such as `vstack`, `hstack`, `grid`, `spacer`, `table-layout`, and `split-pane` should use a dashed selection outline or other dashed treatment consistent with their layout-only canvas boundary.
+- Visible/content components should use a solid selection outline.
+- Selection treatment should not add persistent labels or explanatory chrome that would be confused with the authored UI.
+
+Hover and delete:
+
+- Canvas components should react to hover as well as click.
+- Non-root components should show a compact top-right delete affordance on hover.
+- The delete affordance should be a small round button with an `×` glyph, not a text label such as `Delete`.
+- Clicking the delete affordance removes the component through the same editor command and undo/redo history path as inspector deletion.
+- The root component is never deletable from the canvas.
+
+## Canvas Rendering Fidelity
+
+The canvas should resemble the authored UI more than a debug tree visualization.
+
+Required rendering guidance:
+
+- Avoid persistent explanatory text inside canvas components unless that text is part of the authored component value.
+- The component type name, debug labels, placeholder captions, and instructional chrome should be omitted from visible leaf components in normal canvas rendering.
+- Layout-only components may keep subtle dashed boundaries because they otherwise have no visible authored representation.
+- A `label` component should render primarily as its authored label text. It should not add a border, the word `label`, muted duplicate text, or extra debug text.
+- A `button` component should render like a button whose visible text is its authored label. It should not add an additional component header inside the button body.
+- An `input` component should render like an input field using its authored label and hint, without extra debug framing beyond what helps identify the field.
+- A `table` component should render as a simple table-like surface with column headers and at least one empty or sample body row, rather than a pipe-delimited text line.
+- `image` and `list` may use lightweight placeholders, but those placeholders should still look like the authored UI element rather than a debug node record.
+- Containers may expose editor-only boundaries and insertion zones, but those affordances should be visually subordinate to authored content.
+
+Root surface chrome:
+
+- `browser` canvas chrome should resemble a browser frame with back, forward, reload, address display, and three window control buttons.
+- `window` canvas chrome should show a title-bar style frame with three window control buttons.
+- `dialog` canvas chrome should show a compact title-bar style frame with one close button.
+- `menu` canvas chrome should not show a title.
+
+Spacer rendering:
+
+- A `spacer` should communicate tension or stretch direction, similar to spacer widgets in Qt Creator.
+- In a horizontal stack, a spacer should render as a horizontal stretch affordance and consume remaining horizontal space.
+- In a vertical stack, a spacer should render as a vertical stretch affordance and consume remaining vertical space.
+- Spacer visuals may use arrows, dashed tension lines, and small end handles, but should remain editor affordances rather than authored UI content.
+- If a horizontal stack contains `button`, `spacer`, `button`, the second button should be pushed to the right edge because the spacer absorbs the remaining width.
+- Spacer behavior should follow the parent layout direction. If a spacer is moved between horizontal and vertical containers, its visual orientation should update accordingly.
 
 ## Tree Structure View
 
@@ -145,6 +265,46 @@ Read-only YAML viewer:
 - Clearly indicates that it is a generated view of the current editor document, not a separate saved source.
 
 The source editor and YAML viewer must not diverge. When source text is valid, both views should represent the same selected `uisketch` source tree after normalization. When source text is invalid, the viewer should continue to show the last valid visual document and the editor should make that stale relationship visible.
+
+## Inspector Editing Details
+
+Inspector controls should optimize for ordinary editing, including temporary invalid values while the user is typing.
+
+Tabs inspector:
+
+- `tabs.labels` should not be edited as raw YAML syntax in a single text field when a structured UI is available.
+- The inspector should present tab labels as an editable list of items.
+- The selected tab should be edited separately from the label list, preferably with a select control populated from the current tab labels.
+- Inspector changes should serialize back to the canonical YAML array representation used by [UI Layout DSL](ui-layout-dsl.md).
+- If the selected tab is removed or renamed, the inspector should deterministically choose a valid selected tab or report a local inspector validation issue before committing.
+
+Numeric inspector fields:
+
+- Numeric fields such as `grid.columns` should allow a temporary empty string or syntactically invalid draft while the input is focused.
+- Temporary invalid inspector drafts should be marked as local editor errors and must not immediately overwrite the last valid canonical YAML value.
+- Canvas layout should use the last valid numeric value while the inspector draft is invalid.
+- A user must be able to delete the final digit of a numeric field in order to replace it with another value.
+- Committing a valid numeric draft updates canonical YAML, tree, canvas, source, undo/redo history, and validation state.
+- `grid.columns: 2` should lay out children into two columns from left to right; children must not collapse into only the right column.
+
+## Undo And Redo
+
+The browser editor should support undo and redo across visual edits and valid source edits.
+
+The history model should store snapshots of the selected canonical YAML source rather than only storing visual editor commands. YAML snapshots are preferred because users may directly edit source code, and visual command inversion cannot represent every source edit.
+
+Required behavior:
+
+- Record a history entry after each committed visual operation that changes canonical YAML.
+- Record a history entry after a source edit is parsed successfully and accepted as the current valid document.
+- Do not record invalid source text as a canonical history entry.
+- Preserve the invalid source editing buffer separately from the last valid YAML snapshot.
+- Undo restores the previous valid YAML snapshot, then rebuilds canvas, tree, inspector, source view, YAML viewer, validation findings, and preview from that snapshot.
+- Redo reapplies the next valid YAML snapshot in the same way.
+- Consecutive source editor keystrokes should be coalesced by debounce, explicit apply, blur, or another deterministic commit boundary so history does not record every character.
+- Visual edits made after undo should discard redo entries, following ordinary editor behavior.
+
+The browser source editor may also have its own text-level undo stack while focused. The product-level undo/redo history should be integrated carefully: text-level undo handles in-progress source typing, while product-level undo restores accepted YAML snapshots that affect the visual document. The exact keyboard shortcut routing can be implementation-defined, but the UI must make it clear whether the current invalid source buffer or the last valid visual document is being restored.
 
 ## Output Actions
 
@@ -196,6 +356,7 @@ The browser editor should be deployable to GitHub Pages as a static web applicat
 
 Deployment requirements:
 
+- The GitHub Pages app is built from the npm workspace browser package using Vite or an equivalent static bundler.
 - The first hosted version must not require a server-side API.
 - The app must work from a repository subpath such as `https://owner.github.io/repo-name/`.
 - Routing should use hash routes or another GitHub Pages-compatible approach that survives refreshes without server rewrites.
@@ -203,6 +364,7 @@ Deployment requirements:
 - Share URLs should use the fragment form, such as `#s=<encoded-payload>`, so GitHub Pages can serve the same static file for all shared sketches.
 - Import, export, localStorage, and URL sharing should work entirely in the browser.
 - The deployed app should include a minimal sample sketch so first-time users can edit without importing a file.
+- The first screen should follow the visual structure specified in `web/webeditor.md`, with primary tabs for visual editing and source editing, visual sub-tabs for edit/SVG preview/ASCII preview, a component palette, properties inspector, and tree inspector.
 
 Out of scope for GitHub Pages deployment:
 
@@ -215,7 +377,7 @@ Out of scope for GitHub Pages deployment:
 
 The editor should support TypeScript Playground style sharing by embedding the current sketch in the URL. A shared URL must be enough to reconstruct the current selected `uisketch` source tree without requiring a server-side saved document.
 
-The share payload should be generated from the canonical editor document, not from transient view state. Selection, hover, drag state, inspector drafts, zoom, pan, and source cursor position must not be included.
+The share payload should be generated from the canonical editor document and associated with the current editor URL. Selection, hover, drag state, inspector drafts, zoom, pan, source cursor position, local file paths, and local project roots must not be included.
 
 Recommended pipeline:
 
@@ -236,6 +398,10 @@ The initial parameter name should be short, for example `s`, so a shared URL loo
 ```text
 https://example/editor#s=<encoded-payload>
 ```
+
+The share action should produce the current page URL plus the encoded content key in the fragment. In other words, it should preserve the current deployment base URL and route, replace any previous share key for the active document, and copy a URL whose `s` value alone is sufficient to reconstruct the shared sketch in browser mode.
+
+Share URLs are a browser-mode feature. Local project mode must not expose a share URL action unless the user explicitly exports a browser-mode copy that removes local file identity and uses only canonical content.
 
 ### Short-Key Encoding
 
@@ -301,13 +467,26 @@ Required download behavior:
 - Download the compact share payload as a `.uisketch` or `.json` file for offline transfer.
 - Use deterministic filenames based on the root ID or title when available.
 
-Required browser storage behavior:
+Required browser-mode storage behavior:
 
-- Autosave the current canonical `.uisketch.md` source, selected `uisketch` source fence body, or compact editor document to `localStorage`.
+- Let the user explicitly save the current canonical `.uisketch.md` source under a user-provided document name.
+- Store named documents in `localStorage` with a stable generated document ID, display name, created time, updated time, schema or payload version, and canonical source content.
+- Autosave recovery drafts separately from named saved documents so a crash or reload can recover work without pretending it was explicitly saved.
 - Restore the latest local draft when opening the editor without a shared URL or imported file.
-- Keep a small list of recent drafts keyed by root ID or generated draft ID.
-- Store schema or payload version with each local draft.
-- Provide a clear way to discard local drafts.
+- Keep a list of saved browser-local documents that can be loaded later.
+- Let the user rename a saved browser-local document without changing the canonical sketch source unless the user also edits source metadata.
+- Let the user delete browser-local saved documents after confirmation.
+- Provide a clear way to discard autosave recovery drafts.
+
+Suggested `localStorage` keys:
+
+| Key | Value |
+| --- | --- |
+| `uisketch.saved.index.v1` | Ordered list of saved document metadata and IDs. |
+| `uisketch.saved.<id>.v1` | Canonical `.uisketch.md` source and save metadata for one named document. |
+| `uisketch.draft.current.v1` | Autosave recovery state for the active unsaved browser-mode document. |
+
+The named save dialog should require a non-empty name. If a save name already exists, the editor should ask whether to overwrite that saved browser-local document or choose a different name.
 
 Loading precedence should be deterministic:
 
@@ -320,6 +499,42 @@ Loading precedence should be deterministic:
 
 The editor must not silently overwrite a local draft with a shared URL payload until the user changes or saves the loaded sketch.
 
+## Local Project File Mode
+
+Local project mode lets the editor read and write files in a repository through a local Go backend. This mode exists for users who want the visual editor to update actual `.uisketch.md` files rather than browser-local storage.
+
+Required backend behavior:
+
+- Start from an explicit project root, defaulting to the current working directory when launched by the CLI.
+- Restrict all file listing, read, create, and write operations to the project root after path cleaning and symlink resolution.
+- List editable files under the project root, prioritizing `.uisketch.md` and `.md` files that contain `type: uisketch` frontmatter or explicit `uisketch` source fences.
+- Read a selected file and return content, normalized project-relative path, last modified time, size, and a revision token such as mtime plus size or a content hash.
+- Write only when the client provides the last known revision token, so the backend can detect external file changes before overwriting.
+- Create new `.uisketch.md` files from a safe starter document and reject paths that escape the project root.
+- Return structured errors for permission denied, file not found, path outside project root, unsupported file type, invalid filename, and external modification conflict.
+
+Required UI behavior:
+
+- Show a project file list or file picker backed by the local server.
+- Open a selected file into the same visual/source editor used in browser mode.
+- Save writes the canonical `.uisketch.md` source back to the opened file path through the backend.
+- Save As or New File creates a new project-relative file and then makes that path the active save target.
+- If the active file changed on disk since it was opened or last saved, the editor must warn before overwriting and offer at least reload or cancel.
+- Local project mode must not use named `localStorage` saves, autosave recovery as an authoritative save, or share URLs as persistence.
+
+When a file path is supplied at launch, the local project editor should open that file immediately after startup if it is inside the project root. If the file does not exist, the editor may offer to create it as a new `.uisketch.md` file after confirming the project-relative path.
+
+## Standalone App Option
+
+The local project backend should be designed so the same file operations can be reused by a Wails standalone app.
+
+Wails packaging is optional for the first local project slice, but the architecture should keep these constraints:
+
+- The web UI should call a host file API interface rather than hard-coding HTTP-specific details throughout the editor.
+- The Go file service should be reusable from both an HTTP local server and Wails bindings.
+- Browser mode must remain static-hostable without Wails or a local server.
+- Wails window close handling must use the same dirty-document confirmation rules as browser tab close handling.
+
 ## Drag And Drop Behavior
 
 The editor should behave like a form editor, but every action must produce valid semantic layout where possible.
@@ -329,6 +544,10 @@ Required interactions:
 - Dragging from the palette creates a new component with safe defaults.
 - Dragging an existing component moves it without changing its semantic type or ID.
 - Containers expose visible insertion targets before, after, and inside child lists.
+- Insertion targets should be compact in the normal state, roughly a 3 px high or wide line depending on insertion direction.
+- Insertion targets should not expand or show instructional text merely because the mouse pointer hovers over them without an active drag.
+- During an active drag, insertion targets should become easier to see, and the hovered drop target should expand enough to communicate where the component will be inserted.
+- The hovered active drop target should use a clear highlight treatment such as an accent line, soft fill, or stronger outline.
 - Invalid drop targets are disabled with a validation message.
 - Dropping a control onto an empty canvas prompts or creates a valid root surface when the project has no root.
 - Dropping ordinary controls into `browser`, `window`, `dialog`, or `menu` appends them to the root `children` list.
@@ -336,6 +555,78 @@ Required interactions:
 - Dragging a component across incompatible containers should wrap or reject the move according to deterministic editor rules.
 
 The editor should prefer semantic wrappers over coordinates. It may show bounding boxes and insertion lines, but it must not store absolute positions as the primary layout model.
+
+## Canvas Hover And Component Actions
+
+Canvas components should respond to pointer hover as well as click selection.
+
+Required behavior:
+
+- Hovering a component highlights the component boundary without changing canonical YAML.
+- Hovering a non-root component shows a small delete affordance in the component's top-right corner.
+- Clicking the hover delete affordance removes that component from its parent and selects the nearest valid parent or sibling.
+- The root component must not show a delete affordance because a document always has exactly one root surface.
+- Hover controls must not overlap essential component labels or make the canvas jump.
+- Hover controls are editor UI only and must not be serialized into YAML.
+
+Click selection remains required. Hover should make the editor feel responsive and discoverable, but editing commands that change YAML still require an explicit click or drop.
+
+## Component Visual Classification
+
+The visual editor should clearly distinguish layout-only components from components that represent visible UI content.
+
+Layout-only components include:
+
+- `vstack`
+- `hstack`
+- `grid`
+- `spacer`
+- `table-layout`
+- `split-pane`
+
+Layout-only components should use a structural treatment such as a dashed outline, lighter fill, layout glyph, or muted chrome. This treatment communicates that they arrange children rather than represent visible product UI.
+
+Visible or content-bearing components such as `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `dialog`, `menu`, and `custom-component` should use a stronger component treatment that resembles a concrete UI object or semantic surface.
+
+The palette should separate layout components from visible/content components. A minimal grouping is:
+
+| Palette Group | Examples |
+| --- | --- |
+| Layout | `vstack`, `hstack`, `grid`, `spacer`, `table-layout`, `split-pane` |
+| Surfaces | `browser`, `window`, `mobile`, `dialog`, `menu` |
+| Components | `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `custom-component` |
+
+The palette grouping is an authoring affordance only. It must not change the canonical component vocabulary or generated YAML.
+
+## Root Surface Editing
+
+The editor document always has exactly one root component.
+
+Required behavior:
+
+- The root component cannot be deleted from the canvas, tree, hover menu, inspector, or keyboard commands.
+- The root component type can be changed through the inspector using a select control.
+- The first supported root type choices should include `browser`, `window`, `mobile`, `dialog`, and `menu`.
+- Changing the root type preserves compatible fields such as `id`, `title`, and `children`.
+- Changing the root type drops or hides fields that are not meaningful for the selected root type, such as `browser.address` when switching to `window`.
+- Root type changes should be recorded in undo/redo history as ordinary accepted document changes.
+- The generated YAML must continue to have exactly one root mapping after a root type change.
+
+The editor may keep root creation shortcuts such as "New browser" and "New window", but those shortcuts reset the document and are separate from changing the current root type.
+
+## Initial Palette Coverage
+
+The first useful visual editor palette should include common layout and visible components beyond the earliest MVP.
+
+Required palette entries:
+
+- Root/surface components: `browser`, `window`, `mobile`, `dialog`, `menu`.
+- Layout components: `vstack`, `hstack`, `grid`, `spacer`.
+- Visible/content components: `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`.
+
+Palette entries may create safe default children when the component is hard to understand empty. For example, `tabs` may start with two labels and one active child body, and `grid` may start with `columns: 2`.
+
+The editor should reject or adapt invalid placements. For example, `spacer` should be allowed primarily inside `hstack`; dropping it elsewhere should either be rejected with a clear message or wrapped/transformed by a deterministic rule.
 
 ## Automatic Padding And Spacing
 
@@ -365,10 +656,14 @@ The editor should create structure according to these deterministic rules:
 | --- | --- |
 | Start new web sketch | Create a `browser` root with an empty `children` list. |
 | Start new desktop sketch | Create a `window` root with an empty `children` list. |
+| Change root type in inspector | Replace only the root surface type while preserving compatible metadata and children. |
 | Drop component into empty root | Append component to root `children`. |
 | Drop component before or after a sibling | Insert into the parent `children` at that index. |
 | Drop two controls side by side | Create or use an `hstack`. |
 | Drop control below another control | Create or use a `vstack`. |
+| Drop `grid` | Create `grid` with `columns: 2` unless the user chooses another column count. |
+| Drop `tabs` | Create `tabs` with safe default labels and one active child body. |
+| Drop `spacer` into `hstack` | Insert an invisible spacer child. |
 | Drop major content next to sidebar-like content | Prefer `hstack` with `widths: [25, 75]` when the user chooses that placement. |
 | Drop table/list/image as main content | Prefer the parent's default remaining-space behavior, or set `widths`/`heights` when the user asks for a specific proportion. |
 
@@ -390,6 +685,23 @@ Validation feedback should include:
 
 Validation findings should be grouped by severity and linked to the relevant selected component when possible.
 
+Finding payloads do not need to share one universal frontend format across Web and VSCode. The browser editor may adapt Go validation results into the shape needed for its validation panel, tree markers, inspector messages, and canvas overlays. Shared code should preserve source range, element ID, element path, severity, and message when available, but host-specific formatting is acceptable.
+
+## Web Security
+
+The browser editor must treat imported files, pasted source, shared URL payloads, and localStorage drafts as untrusted input.
+
+Required rules:
+
+- Decode share payloads with size limits and clear unsupported-version findings.
+- Never execute scripts from Markdown, YAML, decoded payloads, or generated preview SVG.
+- Render preview SVG through a controlled container and avoid inserting arbitrary unsanitized HTML.
+- Keep localStorage data origin-local and provide a way to discard drafts.
+- Do not upload source, generated SVG, validation findings, or drafts to a server in the GitHub Pages first slice.
+- Clipboard and download actions should operate only after explicit user action.
+
+The first supported browser set is current Chrome and Safari. Firefox support may be added later, but first-slice behavior should not depend on browser-only APIs that exclude Safari unless an import/export fallback exists.
+
 ## First Runnable Editor Slice
 
 The first browser editor slice should prove the high-risk assumption that the browser can use the same Go logic as the CLI.
@@ -397,6 +709,7 @@ The first browser editor slice should prove the high-risk assumption that the br
 In scope:
 
 - Minimal web shell with palette, canvas preview, inspector, and `.uisketch.md` source view.
+- Vite-based npm workspace package for the GitHub Pages app as specified by [Frontend Workspace Architecture](frontend-workspace.md).
 - Read-only YAML viewer that shows the current visual editing result as normalized YAML.
 - Tree structure view synchronized with canvas selection, inspector edits, source edits, validation findings, and drag-and-drop moves.
 - Go Wasm adapter that wraps parser, validator, YAML serializer, and SVG renderer operations.
@@ -405,9 +718,16 @@ In scope:
 - Copy current `.uisketch.md`, selected raw YAML source, converted text output, and share URL.
 - Download current `.uisketch.md`, selected raw YAML source, converted text output, and SVG output.
 - Autosave and restore one current draft from `localStorage`.
+- Unsaved-change confirmation for new root shortcuts, file loads, document loads, and browser/tab close.
+- Undo and redo based on accepted YAML snapshots.
 - New sketch starts from a `browser` root.
-- Drag from palette for `button`, `label`, `input`, `table`, `vstack`, and `hstack`.
+- Drag from palette for `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `vstack`, `hstack`, `grid`, and `spacer`.
 - Reorder within the same parent.
+- Separate palette groups for layout components and visible/content components.
+- Distinct canvas styling for layout-only components and visible/content components.
+- Compact insertion targets that expand and highlight only during active drag/drop operations.
+- Hover highlight and top-right delete affordance for non-root components.
+- Root component type selection in the inspector without allowing root deletion.
 - Edit `id`, root `title`, `label`, `action`, `anchor`, and `hint` fields.
 - Render SVG preview after each committed edit.
 - Apply the default spacing profile in preview output.
@@ -423,6 +743,7 @@ Out of scope:
 - Full recent-project management beyond the local draft needed for the first slice.
 - Full keyboard accessibility pass, except basic focusable controls and form labels.
 - Every catalog component in the first palette.
+- Performance tuning for very large sketches before real usage identifies bottlenecks.
 
 ## Acceptance Criteria
 
@@ -432,6 +753,10 @@ Out of scope:
 - The same YAML renders identically through the CLI and browser Wasm renderer for the covered component set.
 - Default padding and gaps appear in the visual preview without adding per-node spacing fields to YAML.
 - Invalid drops are rejected or transformed by deterministic rules and produce visible validation feedback.
+- Drop insertion targets are compact at rest and expand/highlight only while dragging.
+- Layout-only components are visually distinguishable from concrete UI/content components in both the palette and canvas.
+- Hovering a non-root component reveals a delete affordance that removes that component without exposing delete on the root.
+- The root component can be changed between supported root surface types through the inspector and cannot be deleted.
 - The source view round-trips: editing `.uisketch.md` or a selected `uisketch` source fence body updates the canvas, and canvas edits update that fence body.
 - The read-only YAML viewer reflects visual edits as normalized YAML and can be copied or downloaded.
 - The tree structure view round-trips with canvas and source edits, including selection, reorder, and validation markers.
@@ -439,19 +764,24 @@ Out of scope:
 - Share payloads use a versioned short-key model before lz-string/base64 compression.
 - The user can copy source code, copy converted text output, copy the share URL, download canonical YAML, download converted text output, and download current SVG preview.
 - The editor restores an autosaved local draft when no shared URL or imported file is present.
+- Browser mode supports explicit named save, load, delete, and rename for `localStorage` documents.
+- Dirty browser-mode work asks for confirmation before New browser, New window, load, import, shared URL replacement, tab close, or reload discards it.
+- Local project mode can list project files, open one, save changes back to disk, create a new `.uisketch.md` file, and detect external modifications before overwrite.
+- Local project mode hides browser-local saved document and share URL persistence controls.
+- Undo and redo restore accepted YAML snapshots across visual edits and valid source edits.
 - The static build can be hosted from a GitHub Pages repository subpath and still load Wasm/assets, restore `#s=` share URLs, and run without a backend.
+- The web package can be built through the root npm workspace scripts and does not require manually copying Wasm or schema files.
 
 ## Open Decisions
 
 - Decide the frontend framework for the web shell.
-- Decide whether local project file access should use a backend process, browser File System Access API, or import/export only for the first slice.
+- Decide whether the Vite package should initially stay framework-light or use a component framework.
 - Decide how Go Wasm errors should be encoded for stable TypeScript integration.
-- Decide whether the editor should ship as a static web app, a local server launched by the CLI, or both.
 - Decide the canonical short-key symbol table and version migration policy for share payloads.
-- Decide whether `localStorage` should store canonical `.uisketch.md`, selected raw YAML source fence bodies, compact share payloads, or a combination.
 - Decide whether tree drag-and-drop should support cross-container wrapping in the first slice or only same-parent reorder.
 - Decide whether the source editor should default to full `.uisketch.md` editing, focused YAML layout editing, or a split toggle.
 - Decide the GitHub Pages base-path strategy for local preview, repository Pages, and custom domains.
+- Decide whether Wails packaging should be part of the first local project release or a later distribution step.
 
 ## Related Documents
 
@@ -462,7 +792,8 @@ Out of scope:
 - [Sketch Wireframe Renderer](sketch-wireframe-renderer.md)
 - [UI Validation Rules](ui-validation-rules.md)
 - [Initial Implementation Slice](initial-implementation-slice.md)
+- [Frontend Workspace Architecture](frontend-workspace.md)
 
 ## Native-Language Summary
 
-ブラウザ版エディタは、VB のフォームエディタのように palette から semantic component をドラッグして canvas に置き、inspector で `id` や `label` などを編集する authoring surface とする。canvas だけでなく tree structure view でも component hierarchy を確認・選択・並べ替えでき、tree は `.uisketch.md` 内の明示的な `uisketch` source fence body から復元される projection として扱う。source editor では `.uisketch.md` 全体または選択中の `uisketch` source fence body を直接編集でき、ビジュアル編集結果は read-only YAML viewer で正規化 YAML として確認できる。保存される正は editor 独自形式ではなく `type: uisketch` の frontmatter と `uisketch` fence を持つ `.uisketch.md` であり、parse、validation、layout normalize、SVG preview、ASCII/text 変換は Go 実装を Wasm で呼び出して CLI と同じロジックを使う。出力操作として source code、raw YAML source、変換済み text、share URL、validation findings をコピーでき、`.uisketch.md`、raw YAML、text、SVG、compact payload をダウンロードできる。padding や gap は v0.1 では YAML の属性にせず、editor/renderer の既定 spacing policy として 16px root inset、8px stack gap、12px container inset を自動適用する。共有 URL は TypeScript Playground のように、canonical document を短い符号の compact payload に変換し、stable JSON、lz-string、URL-safe base64 を通して `#s=` に埋め込む。localStorage には version 付きの draft を autosave する。エディタは GitHub Pages に配置できる静的 Web アプリとして成立させ、Wasm と assets は相対 URL または base path 設定で読み込み、`#s=` 共有 URL はサーバーなしで復元する。追加候補として undo/redo、shortcuts、templates、validation panel、Markdown embed export、PNG/PDF export、diff、sample gallery、accessibility checklist を検討する。
+ブラウザ版エディタは、VB のフォームエディタのように palette から semantic component をドラッグして canvas に置き、inspector で `id` や `label` などを編集する authoring surface とする。canvas だけでなく tree structure view でも component hierarchy を確認・選択・並べ替えでき、tree は `.uisketch.md` 内の明示的な `uisketch` source fence body から復元される projection として扱う。drop target は通常時は 3px 程度の省スペースな挿入線として扱い、drag 中だけ展開・ハイライトして挿入位置を示す。layout component（vstack、hstack、grid、spacer など）と visible/content component は palette group と canvas styling の両方で区別し、layout component は破線や薄い chrome で構造要素であることを示す。component hover では非 root component の右上に削除 affordance を表示するが、root component は常に 1 つ必要なので削除不可とし、inspector の select で browser/window/mobile/dialog/menu などへ入れ替える。source editor では `.uisketch.md` 全体または選択中の `uisketch` source fence body を直接編集でき、ビジュアル編集結果は read-only YAML viewer で正規化 YAML として確認できる。保存される正は editor 独自形式ではなく `type: uisketch` の frontmatter と `uisketch` fence を持つ `.uisketch.md` であり、parse、validation、layout normalize、SVG preview、ASCII/text 変換は Go 実装を Wasm で呼び出して CLI と同じロジックを使う。New browser/New window などの新規作成、別 document/file の load、browser tab/window close は dirty な変更がある場合に破棄確認を出す。ブラウザモードでは名前付き document を localStorage に保存・読込・削除でき、共有 URL は現在の URL に canonical content key を `#s=` として付けて復元可能にする。ローカルプロジェクトモードでは Go backend が project root 内のファイル一覧、open、save、新規作成を担当し、localStorage 保存と共有 URL は使わない。CLI からファイル名付きで起動するとそのファイルを直接開く。将来的な Wails standalone app でも同じ Go file service と dirty close confirmation を再利用できるようにする。出力操作として source code、raw YAML source、変換済み text、share URL、validation findings をコピーでき、`.uisketch.md`、raw YAML、text、SVG、compact payload をダウンロードできる。padding や gap は v0.1 では YAML の属性にせず、editor/renderer の既定 spacing policy として 16px root inset、8px stack gap、12px container inset を自動適用する。エディタは GitHub Pages に配置できる静的 Web アプリとして成立させ、Wasm と assets は相対 URL または base path 設定で読み込む。追加候補として undo/redo、shortcuts、templates、validation panel、Markdown embed export、PNG/PDF export、diff、sample gallery、accessibility checklist を検討する。

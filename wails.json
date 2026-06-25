@@ -1,0 +1,13 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "uisketch",
+  "outputfilename": "uisketch-desktop",
+  "frontend:dir": ".",
+  "frontend:install": "npm install",
+  "frontend:build": "sh scripts/build-wails-frontend.sh",
+  "frontend:dev:watcher": "npm run dev:web",
+  "frontend:dev:serverUrl": "http://127.0.0.1:5173",
+  "author": {
+    "name": "UI Sketch"
+  }
+}
