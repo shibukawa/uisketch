@@ -28,6 +28,13 @@ export async function createProjectFile({ path, source }) {
   });
 }
 
+export async function renderLayoutSource(source) {
+  return request("/api/render", {
+    method: "POST",
+    body: JSON.stringify({ source }),
+  });
+}
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     ...options,

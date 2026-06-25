@@ -3,6 +3,7 @@ import {
   listProjectFiles,
   localProjectConfig,
   readProjectFile,
+  renderLayoutSource,
   writeProjectFile,
 } from "./local-project-api.js";
 
@@ -19,6 +20,7 @@ export function createHostFileApi() {
       readFile: (path) => callHost(wailsHost, "readFile", "ReadFile", path),
       writeFile: ({ path, source, revision }) => callHost(wailsHost, "writeFile", "WriteFile", path, source, revision),
       createFile: ({ path, source }) => callHost(wailsHost, "createFile", "CreateFile", path, source),
+      render: (source) => callHost(wailsHost, "renderSource", "RenderSource", source),
       setDirty: (dirty) => callHost(wailsHost, "setDirty", "SetDirty", dirty).catch(() => {}),
     };
   }
@@ -28,6 +30,7 @@ export function createHostFileApi() {
     readFile: readProjectFile,
     writeFile: writeProjectFile,
     createFile: createProjectFile,
+    render: renderLayoutSource,
     setDirty: () => {},
   };
 }
