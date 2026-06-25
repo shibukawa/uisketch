@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"syscall/js"
 
@@ -26,7 +27,7 @@ type wasmNode struct {
 	Address  string     `json:"address,omitempty"`
 	Hint     string     `json:"hint,omitempty"`
 	Prompt   string     `json:"prompt,omitempty"`
-	Data     string     `json:"data,omitempty"`
+	Data     any        `json:"data,omitempty"`
 	Name     string     `json:"name,omitempty"`
 	Purpose  string     `json:"purpose,omitempty"`
 	Badge    string     `json:"badge,omitempty"`
@@ -297,7 +298,6 @@ func formatNode(lines *[]string, n *wasmNode, indent int, listItem bool) {
 		{"address", n.Address},
 		{"hint", n.Hint},
 		{"prompt", n.Prompt},
-		{"data", n.Data},
 		{"name", n.Name},
 		{"purpose", n.Purpose},
 		{"badge", n.Badge},
@@ -308,6 +308,10 @@ func formatNode(lines *[]string, n *wasmNode, indent int, listItem bool) {
 		if prop.value != "" {
 			*lines = append(*lines, fmt.Sprintf("%s%s: %s", spaces(indent), prop.key, yamlScalar(prop.value)))
 		}
+	}
+	if n.Data != nil {
+		*lines = append(*lines, fmt.Sprintf("%sdata:", spaces(indent)))
+		appendYAMLValue(lines, n.Data, indent+2)
 	}
 	if len(n.Columns) > 0 {
 		*lines = append(*lines, spaces(indent)+"columns:")
@@ -373,6 +377,80 @@ func yamlScalar(s string) string {
 		return `""`
 	}
 	return s
+}
+
+func appendYAMLValue(lines *[]string, value any, indent int) {
+	switch v := value.(type) {
+	case map[string]any:
+		if len(v) == 0 {
+			*lines = append(*lines, spaces(indent)+"{}")
+			return
+		}
+		for _, key := range sortedKeys(v) {
+			item := v[key]
+			if yamlStructured(item) {
+				*lines = append(*lines, fmt.Sprintf("%s%s:", spaces(indent), key))
+				appendYAMLValue(lines, item, indent+2)
+			} else {
+				*lines = append(*lines, fmt.Sprintf("%s%s: %s", spaces(indent), key, yamlAnyScalar(item)))
+			}
+		}
+	case []any:
+		if len(v) == 0 {
+			*lines = append(*lines, spaces(indent)+"[]")
+			return
+		}
+		for _, item := range v {
+			if yamlStructured(item) {
+				*lines = append(*lines, spaces(indent)+"-")
+				appendYAMLValue(lines, item, indent+2)
+			} else {
+				*lines = append(*lines, fmt.Sprintf("%s- %s", spaces(indent), yamlAnyScalar(item)))
+			}
+		}
+	default:
+		*lines = append(*lines, spaces(indent)+yamlAnyScalar(value))
+	}
+}
+
+func yamlStructured(value any) bool {
+	switch value.(type) {
+	case map[string]any, []any:
+		return true
+	default:
+		return false
+	}
+}
+
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func yamlAnyScalar(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return "null"
+	case string:
+		return yamlScalar(v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case float64:
+		return fmt.Sprint(v)
+	case float32:
+		return fmt.Sprint(v)
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprint(v)
+	default:
+		return yamlScalar(fmt.Sprint(v))
+	}
 }
 
 func spaces(n int) string {

@@ -33,7 +33,7 @@ type Node struct {
 	Address     string
 	Hint        string
 	Prompt      string
-	Data        string
+	Data        any
 	Name        string
 	Purpose     string
 	Badge       string
@@ -207,7 +207,7 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 				out.Prompt = prompt
 			}
 		case "data":
-			out.Data = scalarString(prop.Value)
+			out.Data = parseDataValue(prop.Value)
 		case "name":
 			out.Name = scalarString(prop.Value)
 		case "purpose":
@@ -336,6 +336,40 @@ func parseStringProperty(n ast.Node, ctx *parseContext, prop, parent string) (st
 		return "", false
 	}
 	return scalarString(n), true
+}
+
+func parseDataValue(n ast.Node) any {
+	if n == nil || n.Type() == ast.NullType {
+		return nil
+	}
+	if seq, ok := n.(*ast.SequenceNode); ok {
+		out := make([]any, 0, len(seq.Values))
+		for _, value := range seq.Values {
+			out = append(out, parseDataValue(value))
+		}
+		return out
+	}
+	if mapping, ok := n.(*ast.MappingNode); ok {
+		out := make(map[string]any, len(mapping.Values))
+		for _, value := range mapping.Values {
+			out[keyString(value.Key)] = parseDataValue(value.Value)
+		}
+		return out
+	}
+	value := scalarString(n)
+	if value == "true" {
+		return true
+	}
+	if value == "false" {
+		return false
+	}
+	if i, err := strconv.Atoi(value); err == nil {
+		return i
+	}
+	if f, err := strconv.ParseFloat(value, 64); err == nil && strings.ContainsAny(value, ".eE") {
+		return f
+	}
+	return value
 }
 
 func parseTabLabels(n ast.Node, ctx *parseContext, prop, parent string) ([]TabLabel, bool) {

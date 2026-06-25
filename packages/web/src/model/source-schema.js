@@ -2,7 +2,7 @@ import { canHaveChildren, fieldsFor, paletteGroups, rootSurfaceTypes } from "./c
 
 export const componentTypes = [...new Set([...rootSurfaceTypes, ...paletteGroups.flatMap((group) => group.items.map((item) => item.type))])].sort();
 
-export const commonProperties = ["children"];
+export const commonProperties = ["children", "data", "prompt"];
 export const structuralProperties = ["columns", "labels", "widths", "heights"];
 export const propertyTypes = [...new Set([...commonProperties, ...structuralProperties, ...componentTypes.flatMap((type) => fieldsFor({ type }))])].sort();
 export const sourceKeywords = [...new Set([...componentTypes, ...propertyTypes])].sort();
@@ -17,11 +17,14 @@ export function completionsForContext(source, offset) {
 export function sourceSchemaFindings(source) {
   const findings = [];
   const stack = [];
+  let dataIndent = null;
   source.split("\n").forEach((line, index) => {
     const match = line.match(/^(\s*)-?\s*([A-Za-z][A-Za-z0-9_-]*):/);
     if (!match) return;
     const indent = match[1].length;
     const key = match[2];
+    if (dataIndent != null && indent > dataIndent) return;
+    if (dataIndent != null && indent <= dataIndent) dataIndent = null;
     while (stack.length && stack.at(-1).indent >= indent) stack.pop();
     if (componentTypes.includes(key)) {
       stack.push({ indent, type: key });
@@ -35,12 +38,15 @@ export function sourceSchemaFindings(source) {
     if (owner && !propertiesForComponent(owner).includes(key)) {
       findings.push({ severity: "Warning", message: `Line ${index + 1}: "${key}" is not a usual property for ${owner}` });
     }
+    if (key === "data") dataIndent = indent;
   });
   return findings;
 }
 
 export function propertiesForComponent(type) {
   const base = new Set(fieldsFor({ type }));
+  base.add("data");
+  base.add("prompt");
   if (canHaveChildren({ type })) base.add("children");
   if (type === "grid") base.add("columns");
   if (type === "tabs") base.add("labels");

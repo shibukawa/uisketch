@@ -20,7 +20,7 @@ assert.deepEqual(state.selectedPath, [2]);
 
 state.updateSelectedField("label", "Submit order");
 state.updateSelectedField("prompt", "AI note for the button");
-state.updateSelectedField("data", "role: primary");
+state.updateSelectedField("data", { role: "primary", tracking: { event: "submit_order" }, flags: ["default"] });
 state = useEditorStore.getState();
 
 let yaml = serializeYaml(state.root);
@@ -28,14 +28,15 @@ assert.match(yaml, /browser:/);
 assert.match(yaml, /button:/);
 assert.match(yaml, /label: Submit order/);
 assert.match(yaml, /prompt: AI note for the button/);
-assert.match(yaml, /data: "role: primary"/);
+assert.match(yaml, /data:\n\s+role: primary\n\s+tracking:\n\s+event: submit_order\n\s+flags:\n\s+- default/);
 assert.match(yaml, /children:\n\s+- hstack:/);
+assert.deepEqual(parseLayoutYaml(yaml).children[2].data, { flags: ["default"], role: "primary", tracking: { event: "submit_order" } });
 assert.equal(state.undoStack.length > 0, true);
 
 state.undo();
 state = useEditorStore.getState();
 yaml = serializeYaml(state.root);
-assert.equal(yaml.includes("role: primary"), false);
+assert.equal(yaml.includes("submit_order"), false);
 assert.equal(state.redoStack.length > 0, true);
 
 state.redo();
@@ -43,7 +44,7 @@ state = useEditorStore.getState();
 yaml = serializeYaml(state.root);
 assert.match(yaml, /label: Submit order/);
 assert.match(yaml, /prompt: AI note for the button/);
-assert.match(yaml, /data: "role: primary"/);
+assert.match(yaml, /data:\n\s+role: primary\n\s+tracking:\n\s+event: submit_order\n\s+flags:\n\s+- default/);
 
 state.replaceRootType("mobile");
 state = useEditorStore.getState();

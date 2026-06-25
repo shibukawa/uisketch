@@ -126,7 +126,7 @@ func TestParseLayoutNewSurfaceAndNavigationFields(t *testing.T) {
 func TestParseYAMLAcceptsPromptOnAnyElement(t *testing.T) {
 	node, err := ParseYAML(`browser:
   id: root
-  data: |
+  data:
     owner: design
     status: draft
   prompt: |
@@ -135,7 +135,7 @@ func TestParseYAMLAcceptsPromptOnAnyElement(t *testing.T) {
   children:
     - button:
         label: Create Alert
-        data: |
+        data:
           analytics: alert-create
         prompt: Prefer this as the primary action.
 `)
@@ -145,14 +145,16 @@ func TestParseYAMLAcceptsPromptOnAnyElement(t *testing.T) {
 	if !strings.Contains(node.Prompt, "keep this layout dense") {
 		t.Fatalf("root Prompt = %q", node.Prompt)
 	}
-	if !strings.Contains(node.Data, "owner: design") {
-		t.Fatalf("root Data = %q", node.Data)
+	rootData, ok := node.Data.(map[string]any)
+	if !ok || rootData["owner"] != "design" || rootData["status"] != "draft" {
+		t.Fatalf("root Data = %#v", node.Data)
 	}
 	if got := node.Children[0].Prompt; got != "Prefer this as the primary action." {
 		t.Fatalf("child Prompt = %q", got)
 	}
-	if !strings.Contains(node.Children[0].Data, "analytics: alert-create") {
-		t.Fatalf("child Data = %q", node.Children[0].Data)
+	childData, ok := node.Children[0].Data.(map[string]any)
+	if !ok || childData["analytics"] != "alert-create" {
+		t.Fatalf("child Data = %#v", node.Children[0].Data)
 	}
 }
 

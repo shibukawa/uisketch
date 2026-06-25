@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fieldsFor, rootSurfaceTypes } from "../model/component-catalog.js";
+import { parseYamlValue, serializeYamlValue } from "../model/yaml.js";
 import { useEditorStore } from "../state/useEditorStore.js";
 
 export function Inspector() {
@@ -12,6 +13,8 @@ export function Inspector() {
   const [gridColumnsDraft, setGridColumnsDraft] = useState("");
   const [tableColumnsDraft, setTableColumnsDraft] = useState("");
   const [tabsLabelsDraft, setTabsLabelsDraft] = useState("");
+  const [dataDraft, setDataDraft] = useState("");
+  const [dataError, setDataError] = useState("");
 
   useEffect(() => {
     if (node?.type === "grid") setGridColumnsDraft(String(node.columns || 2));
@@ -25,6 +28,11 @@ export function Inspector() {
     if (node?.type === "tabs") setTabsLabelsDraft(formatLabelsDraft(node.labels || []));
   }, [node?.type, selectedPathKey]);
 
+  useEffect(() => {
+    setDataDraft(serializeYamlValue(node?.data ?? ""));
+    setDataError("");
+  }, [selectedPathKey]);
+
   if (!node) return <div className="p-3 text-sm text-base-content/60">Select a component.</div>;
 
   return (
@@ -34,18 +42,6 @@ export function Inspector() {
       ) : (
         <Field label="type" value={node.type} disabled />
       )}
-      <TextAreaField
-        label="prompt"
-        value={node.prompt || ""}
-        help="AI-facing note saved with the node."
-        onChange={(value) => updateSelectedField("prompt", value)}
-      />
-      <TextAreaField
-        label="data"
-        value={node.data || ""}
-        help="Freeform node metadata saved with the node."
-        onChange={(value) => updateSelectedField("data", value)}
-      />
       {fieldsFor(node).map((key) => (
         <Field key={key} label={key} value={node[key] || ""} onChange={(value) => updateSelectedField(key, value)} />
       ))}
@@ -101,6 +97,28 @@ export function Inspector() {
           Delete
         </button>
       )}
+      <TextAreaField
+        label="prompt"
+        value={node.prompt || ""}
+        help="AI-facing note saved with the node."
+        onChange={(value) => updateSelectedField("prompt", value)}
+      />
+      <TextAreaField
+        label="data"
+        value={dataDraft}
+        invalid={Boolean(dataError)}
+        help={dataError || "YAML metadata saved as structured data."}
+        onChange={(value) => {
+          setDataDraft(value);
+          try {
+            updateSelectedField("data", parseYamlValue(value));
+            setDataError("");
+          } catch (error) {
+            updateSelectedField("data", value);
+            setDataError(error.message);
+          }
+        }}
+      />
     </form>
   );
 }
@@ -139,17 +157,17 @@ function Field({ label, value, onChange, disabled = false, invalid = false, help
   );
 }
 
-function TextAreaField({ label, value, onChange, disabled = false, help = "" }) {
+function TextAreaField({ label, value, onChange, disabled = false, invalid = false, help = "" }) {
   return (
     <label className="form-control">
       <span className="label pb-1 text-xs text-base-content/60">{label}</span>
       <textarea
-        className="textarea textarea-bordered textarea-sm min-h-24 w-full"
+        className={`textarea textarea-bordered textarea-sm min-h-24 w-full ${invalid ? "textarea-error" : ""}`}
         value={value}
         disabled={disabled}
         onChange={(event) => onChange?.(event.target.value)}
       />
-      {help && <span className="pt-1 text-xs text-base-content/50">{help}</span>}
+      {help && <span className={`pt-1 text-xs ${invalid ? "text-error" : "text-base-content/50"}`}>{help}</span>}
     </label>
   );
 }

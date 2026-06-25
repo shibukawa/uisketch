@@ -14,7 +14,7 @@ function writeNode(node, indent, listItem) {
   const lines = [listItem ? `${pad}- ${node.type}:` : `${pad}${node.type}:`];
   const propIndent = indent + (listItem ? 4 : 2);
   const propPad = " ".repeat(propIndent);
-  const props = Object.entries(node).filter(([key, value]) => key !== "type" && key !== "children" && valueIsPresent(value));
+  const props = Object.entries(node).filter(([key, value]) => key !== "type" && key !== "children" && (key === "data" ? value !== "" && value !== undefined : valueIsPresent(value)));
 
   for (const [key, value] of props) {
     if (key === "labels" && Array.isArray(value)) {
@@ -23,6 +23,10 @@ function writeNode(node, indent, listItem) {
         const text = item?.text || "";
         lines.push(`${propPad}  - ${item?.selected ? `[${escapeYaml(text)}]` : escapeYaml(text)}`);
       }
+      continue;
+    }
+    if (key === "data") {
+      writeYamlProperty(lines, key, value, propIndent);
       continue;
     }
     if (Array.isArray(value)) {
@@ -95,6 +99,17 @@ function parseNode(lines, index, indent, listItem) {
       continue;
     }
 
+    if (key === "data") {
+      if (rest !== "") {
+        setNodeValue(node, key, parseScalar(rest));
+        continue;
+      }
+      const parsed = parseYamlValueBlock(lines, index, propIndent + 2);
+      setNodeValue(node, key, parsed.value);
+      index = parsed.index;
+      continue;
+    }
+
     if (rest !== "") {
       setNodeValue(node, key, parseScalar(rest));
       continue;
@@ -119,6 +134,136 @@ function setNodeValue(node, key, value) {
   node[key] = value;
 }
 
+export function serializeYamlValue(value) {
+  if (!isStructuredYamlValue(value)) return escapeYaml(String(value ?? ""));
+  const lines = [];
+  writeNestedYamlValue(lines, value, 0);
+  return lines.join("\n");
+}
+
+export function parseYamlValue(source) {
+  const lines = String(source || "").replace(/\r\n?/g, "\n").split("\n");
+  const index = firstContentLine(lines, 0);
+  if (index >= lines.length) return "";
+  if (lines[index].trim().startsWith("- ")) return parseYamlValueBlock(lines, index, countIndent(lines[index])).value;
+  if (/^[A-Za-z0-9_-]+:/.test(lines[index].trim())) return parseYamlValueBlock(lines, index, countIndent(lines[index])).value;
+  if (lines.length - index === 1) return parseScalar(lines[index].trim());
+  return lines.slice(index).join("\n").trimEnd();
+}
+
+function writeYamlProperty(lines, key, value, indent) {
+  const pad = " ".repeat(indent);
+  if (!isStructuredYamlValue(value)) {
+    lines.push(`${pad}${key}: ${escapeYaml(String(value ?? ""))}`);
+    return;
+  }
+  lines.push(`${pad}${key}:`);
+  writeNestedYamlValue(lines, value, indent + 2);
+}
+
+function writeNestedYamlValue(lines, value, indent) {
+  const pad = " ".repeat(indent);
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      lines.push(`${pad}[]`);
+      return;
+    }
+    for (const item of value) {
+      if (isPlainObject(item) || Array.isArray(item)) {
+        lines.push(`${pad}-`);
+        writeNestedYamlValue(lines, item, indent + 2);
+      } else {
+        lines.push(`${pad}- ${escapeYamlScalar(item)}`);
+      }
+    }
+    return;
+  }
+  if (isPlainObject(value)) {
+    const entries = Object.entries(value);
+    if (!entries.length) {
+      lines.push(`${pad}{}`);
+      return;
+    }
+    for (const [key, item] of entries) {
+      if (isStructuredYamlValue(item)) {
+        lines.push(`${pad}${key}:`);
+        writeNestedYamlValue(lines, item, indent + 2);
+      } else {
+        lines.push(`${pad}${key}: ${escapeYamlScalar(item)}`);
+      }
+    }
+    return;
+  }
+  lines.push(`${pad}${escapeYamlScalar(value)}`);
+}
+
+function parseYamlValueBlock(lines, index, indent) {
+  index = firstContentLine(lines, index);
+  if (index >= lines.length || countIndent(lines[index]) < indent) return { value: {}, index };
+  if (lines[index].trim() === "[]") return { value: [], index: index + 1 };
+  if (lines[index].trim() === "{}") return { value: {}, index: index + 1 };
+  if (lines[index].trim().startsWith("-")) return parseYamlSequence(lines, index, indent);
+  return parseYamlMapping(lines, index, indent);
+}
+
+function parseYamlMapping(lines, index, indent) {
+  const out = {};
+  while (index < lines.length) {
+    index = firstContentLine(lines, index);
+    if (index >= lines.length || countIndent(lines[index]) < indent) break;
+    if (countIndent(lines[index]) !== indent) throw new Error(`Unexpected data indentation at line ${index + 1}`);
+    const prop = lines[index].match(/^\s*([A-Za-z0-9_-]+):(.*)$/);
+    if (!prop) break;
+    const key = prop[1];
+    const rest = prop[2].trim();
+    index += 1;
+    if (rest !== "") {
+      out[key] = parseScalar(rest);
+      continue;
+    }
+    const parsed = parseYamlValueBlock(lines, index, indent + 2);
+    out[key] = parsed.value;
+    index = parsed.index;
+  }
+  return { value: out, index };
+}
+
+function parseYamlSequence(lines, index, indent) {
+  const out = [];
+  while (index < lines.length) {
+    index = firstContentLine(lines, index);
+    if (index >= lines.length || countIndent(lines[index]) < indent) break;
+    if (countIndent(lines[index]) !== indent) throw new Error(`Unexpected data indentation at line ${index + 1}`);
+    const item = lines[index].match(/^\s*-\s*(.*)$/);
+    if (!item) break;
+    const rest = item[1].trim();
+    index += 1;
+    if (rest !== "") {
+      out.push(parseScalar(rest));
+      continue;
+    }
+    const parsed = parseYamlValueBlock(lines, index, indent + 2);
+    out.push(parsed.value);
+    index = parsed.index;
+  }
+  return { value: out, index };
+}
+
+function isStructuredYamlValue(value) {
+  return Array.isArray(value) || isPlainObject(value);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function escapeYamlScalar(value) {
+  if (value === null) return "null";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return escapeYaml(String(value ?? ""));
+}
+
 function parseTabLabel(value) {
   if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
     return { text: value.slice(1, -1), selected: true };
@@ -128,7 +273,11 @@ function parseTabLabel(value) {
 
 function parseScalar(value) {
   if (value === '""') return "";
+  if (value === "null" || value === "~") return null;
+  if (value === "true") return true;
+  if (value === "false") return false;
   if (/^-?\d+$/.test(value)) return Number(value);
+  if (/^-?(?:\d+\.\d+|\d+\.)$/.test(value)) return Number(value);
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
     try {
       return JSON.parse(value);
