@@ -12,7 +12,7 @@ export function TreePanel() {
   return (
     <>
       <div className="pane-title">Tree</div>
-      <div className="min-h-0 overflow-auto p-2">
+      <div className="p-2">
         {rows.map(({ node, path }) => (
           <button
             key={path.join(".") || "root"}

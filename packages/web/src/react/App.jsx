@@ -312,10 +312,8 @@ export function App() {
         </div>
         {editorMode === "visual" ? (
           <section className="grid grid-cols-[340px_minmax(520px,1fr)_320px] gap-3" data-testid="visual-mode">
-            <aside className="card grid h-[calc(100vh-124px)] min-h-0 grid-rows-[minmax(220px,1fr)_minmax(180px,0.7fr)] overflow-hidden bg-base-100">
-              <div className="min-h-0 overflow-auto">
-                <ToolPalette />
-              </div>
+            <aside className="card h-[calc(100vh-124px)] min-h-0 overflow-y-auto bg-base-100">
+              <ToolPalette />
               <TreePanel />
             </aside>
             <section className="card h-[calc(100vh-124px)] min-h-0 bg-base-100">
