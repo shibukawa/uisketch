@@ -112,6 +112,26 @@ func TestDistributeHorizontalSpacerAbsorbsRemainingSpace(t *testing.T) {
 	}
 }
 
+func TestRenderHStackAlignsLabelWithButtonText(t *testing.T) {
+	got := Render(&sketch.Document{Root: &sketch.Node{
+		Type: "window",
+		Children: []*sketch.Node{{
+			Type: "hstack",
+			Children: []*sketch.Node{
+				{Type: "label", Label: "UI Sketch Editor"},
+				{Type: "spacer"},
+				{Type: "button", Label: "Share"},
+			},
+		}},
+	}})
+	for _, line := range strings.Split(got, "\n") {
+		if strings.Contains(line, "UI Sketch Editor") && strings.Contains(line, "Share") {
+			return
+		}
+	}
+	t.Fatalf("label and button text are not on the same row:\n%s", got)
+}
+
 func TestRenderTabsShowsOnlyActiveBody(t *testing.T) {
 	got := Render(&sketch.Document{Root: &sketch.Node{
 		Type: "window",

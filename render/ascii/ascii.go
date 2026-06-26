@@ -245,9 +245,18 @@ func renderChildrenAsHStackWithMode(c *canvas, r rect, children []*sketch.Node, 
 	}
 	widths := distributeHorizontal(max(1, r.w-gap*(len(children)-1)), children, slots, fillRemainder)
 	x := r.x
+	compact := compactHeaderHStack(children)
 	for i, child := range children {
 		w := widths[i]
-		renderNode(c, rect{x, r.y, w, r.h}, child, ns)
+		childRect := rect{x, r.y, w, r.h}
+		if compact {
+			childRect.h = min(3, r.h)
+		}
+		if compact && child != nil && child.Type == "label" {
+			childRect.y = hstackLabelY(r)
+			childRect.h = 1
+		}
+		renderNode(c, childRect, child, ns)
 		x += w + gap
 	}
 }
@@ -420,6 +429,30 @@ func renderInput(c *canvas, r rect, n *sketch.Node) {
 	if r.h >= 2 {
 		drawBox(c, rect{r.x, r.y + 1, min(r.w, max(12, len([]rune(label))+8)), 3})
 	}
+}
+
+func hstackLabelY(r rect) int {
+	buttonH := min(3, r.h)
+	return r.y + min(1, max(0, buttonH-1))
+}
+
+func compactHeaderHStack(children []*sketch.Node) bool {
+	hasLabel := false
+	hasButton := false
+	for _, child := range children {
+		if child == nil || child.Type == "spacer" {
+			continue
+		}
+		switch child.Type {
+		case "label":
+			hasLabel = true
+		case "button":
+			hasButton = true
+		default:
+			return false
+		}
+	}
+	return hasLabel && hasButton
 }
 
 func renderTextarea(c *canvas, r rect, n *sketch.Node) {
@@ -646,7 +679,10 @@ func intrinsicHeight(n *sketch.Node) int {
 	case "textarea":
 		return 5
 	case "hstack":
-		return max(4, maxChildHeight(n.Children))
+		if compactHeaderHStack(n.Children) {
+			return 3
+		}
+		return max(3, maxChildHeight(n.Children))
 	case "vstack":
 		return childrenVStackHeight(n.Children)
 	case "label", "checkbox", "radio", "toggle", "slider", "badge":
@@ -659,8 +695,10 @@ func intrinsicHeight(n *sketch.Node) int {
 		return gridHeight(n)
 	case "section":
 		return max(8, childrenVStackHeight(n.Children)+2)
-	case "list", "tree", "calendar", "image", "custom":
+	case "list", "tree", "calendar":
 		return 8
+	case "image", "custom":
+		return 5
 	case "splitter":
 		if n.Orientation == "vertical" {
 			return max(12, childrenVStackHeight(n.Children))
@@ -689,14 +727,29 @@ func maxChildHeight(children []*sketch.Node) int {
 
 func gridHeight(n *sketch.Node) int {
 	if len(n.Children) == 0 {
-		return 8
+		return 5
 	}
 	cols := n.GridColumns
 	if cols <= 0 {
 		cols = 2
 	}
 	rows := (len(n.Children) + cols - 1) / cols
+	if allCompactImages(n.Children) {
+		return max(5, rows*max(1, maxChildHeight(n.Children)))
+	}
 	return max(8, rows*max(1, maxChildHeight(n.Children)))
+}
+
+func allCompactImages(children []*sketch.Node) bool {
+	if len(children) == 0 {
+		return false
+	}
+	for _, child := range children {
+		if child == nil || (child.Type != "image" && child.Type != "custom") {
+			return false
+		}
+	}
+	return true
 }
 
 func activeTabHeight(n *sketch.Node) int {

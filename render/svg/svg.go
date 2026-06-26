@@ -796,15 +796,18 @@ func intrinsicHeight(n *sketch.Node) int {
 	case "slider":
 		return 64
 	case "table":
-		return 132
+		return 72
 	case "tabs":
 		return max(240, activeTabHeight(n)+72)
 	case "grid":
 		return gridHeight(n)
 	case "section":
+		if allFlexibleDisplay(n.Children) {
+			return max(120, childrenVStackHeight(n.Children)+36)
+		}
 		return max(180, childrenVStackHeight(n.Children)+36)
 	case "list", "tree", "calendar", "image", "custom":
-		return 180
+		return 72
 	case "splitter":
 		if n.Orientation == "vertical" {
 			return max(240, childrenVStackHeight(n.Children))
@@ -812,6 +815,32 @@ func intrinsicHeight(n *sketch.Node) int {
 		return max(240, maxChildHeight(n.Children))
 	default:
 		return 96
+	}
+}
+
+func allFlexibleDisplay(children []*sketch.Node) bool {
+	if len(children) == 0 {
+		return false
+	}
+	for _, child := range children {
+		if !isFlexibleDisplay(child) {
+			return false
+		}
+	}
+	return true
+}
+
+func isFlexibleDisplay(n *sketch.Node) bool {
+	if n == nil {
+		return true
+	}
+	switch n.Type {
+	case "spacer", "table", "list", "tree", "calendar", "image", "custom":
+		return true
+	case "grid", "vstack", "hstack", "splitter":
+		return allFlexibleDisplay(n.Children)
+	default:
+		return false
 	}
 }
 
@@ -889,13 +918,16 @@ func maxChildHeight(children []*sketch.Node) int {
 
 func gridHeight(n *sketch.Node) int {
 	if len(n.Children) == 0 {
-		return 180
+		return 72
 	}
 	cols := n.GridColumns
 	if cols <= 0 {
 		cols = 2
 	}
 	rows := (len(n.Children) + cols - 1) / cols
+	if allFlexibleDisplay(n.Children) {
+		return max(72, rows*max(1, maxChildHeight(n.Children)))
+	}
 	return max(180, rows*(max(1, maxChildHeight(n.Children))+8))
 }
 

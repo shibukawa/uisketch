@@ -156,3 +156,76 @@ func TestRenderGrowsForLongForms(t *testing.T) {
 		t.Fatalf("SVG output did not grow beyond default height:\n%s", got)
 	}
 }
+
+func TestRenderDoesNotGrowForFlexibleDisplayOnlyRegions(t *testing.T) {
+	got := Render(&sketch.Document{Root: &sketch.Node{
+		Type: "browser",
+		Children: []*sketch.Node{{
+			Type: "vstack",
+			Children: []*sketch.Node{
+				{
+					Type: "hstack",
+					Children: []*sketch.Node{
+						{Type: "label", Label: "UI Sketch Editor"},
+						{Type: "spacer"},
+						{Type: "button", Label: "Share"},
+						{Type: "button", Label: "Export"},
+					},
+				},
+				{
+					Type:   "tabs",
+					Labels: []sketch.TabLabel{{Text: "Visual Editor", Selected: true}, {Text: "Source"}},
+					Children: []*sketch.Node{{
+						Type:   "hstack",
+						Widths: []sketch.SizeSlot{{Percent: 25}, {Percent: 60}, {Percent: 15}},
+						Children: []*sketch.Node{
+							{
+								Type:  "section",
+								Label: "Components",
+								Children: []*sketch.Node{{
+									Type: "grid",
+									Children: []*sketch.Node{
+										{Type: "image"}, {Type: "image"}, {Type: "image"}, {Type: "image"},
+										{Type: "image"}, {Type: "image"}, {Type: "image"}, {Type: "image"},
+									},
+								}},
+							},
+							{
+								Type:   "tabs",
+								Labels: []sketch.TabLabel{{Text: "Edit", Selected: true}, {Text: "Preview(SVG)"}, {Text: "Preview(ASCII)"}},
+								Children: []*sketch.Node{{
+									Type:  "image",
+									Label: "Preview Image",
+								}},
+							},
+							{
+								Type:    "vstack",
+								Heights: []sketch.SizeSlot{{Percent: 50}, {Percent: 50}},
+								Children: []*sketch.Node{
+									{
+										Type:  "section",
+										Label: "Properties",
+										Children: []*sketch.Node{{
+											Type:    "table",
+											Columns: []string{"Key", "Value"},
+										}},
+									},
+									{
+										Type:  "section",
+										Label: "Inspector",
+										Children: []*sketch.Node{{
+											Type: "tree",
+										}},
+									},
+								},
+							},
+						},
+					}},
+				},
+			},
+		}},
+	}})
+	if !strings.Contains(got, `height="640"`) {
+		t.Fatalf("SVG output grew for flexible display-only regions:\n%s", got)
+	}
+}
