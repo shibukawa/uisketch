@@ -2,6 +2,12 @@
 
 `uisketch` は、`.uisketch.md` のレイアウトを描画・編集するための Go + Web ワークスペースです。Web エディタ、ローカルプロジェクト編集、CLI レンダリング、Wails のデスクトップ起動を同じソースから扱います。
 
+## Web エディタ
+
+GitHub Pages でホストされた Web エディタを利用できます。
+
+https://shibukawa.github.io/uisketch/
+
 ## セットアップ
 
 ```bash
@@ -95,3 +101,11 @@ npm run build
 - [UI Sketch File Format](specs/ui-sketch-file-format.md)
 - [Uisketch CLI](specs/uisketch-cli.md)
 - [Web Visual Editor](specs/web-visual-editor.md)
+
+## エージェント向けスキル
+
+このリポジトリは、エージェント向けの Codex スキルを [.agents/skills/uisketch-skill](.agents/skills/uisketch-skill) で提供しています。このスキルは `.uisketch.md` ファイルの理解、作成、検証、修正、実装ブリーフとしての利用を支援します。
+
+## ライセンス
+
+このプロジェクトは GNU Affero General Public License v3.0 or later でライセンスされています。詳細は [LICENSE](LICENSE) を参照してください。
