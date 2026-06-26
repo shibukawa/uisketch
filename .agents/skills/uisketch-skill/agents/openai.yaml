@@ -1,0 +1,4 @@
+interface:
+  display_name: "Uisketch Skill"
+  short_description: "Create and validate uisketch Markdown"
+  default_prompt: "Use $uisketch-skill to draft, inspect, or validate a .uisketch.md UI sketch."

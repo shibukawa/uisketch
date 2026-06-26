@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uisketch.local/skills/uisketch-layout.schema.json",
+  "title": "Uisketch UI Layout DSL",
+  "description": "Schema for YAML layout roots inside uisketch Markdown fences.",
+  "$ref": "#/$defs/node",
+  "$defs": {
+    "componentType": {
+      "type": "string",
+      "enum": [
+        "browser",
+        "window",
+        "mobile",
+        "dialog",
+        "menu",
+        "vstack",
+        "hstack",
+        "spacer",
+        "grid",
+        "splitter",
+        "section",
+        "tabs",
+        "button",
+        "toggle",
+        "label",
+        "note",
+        "review",
+        "image",
+        "input",
+        "textarea",
+        "combobox",
+        "checkbox",
+        "radio",
+        "slider",
+        "table",
+        "list",
+        "tree",
+        "calendar",
+        "badge",
+        "custom"
+      ]
+    },
+    "labelValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "vocabulary"
+          ],
+          "properties": {
+            "vocabulary": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "bareChildType": {
+      "type": "string",
+      "enum": [
+        "spacer",
+        "button",
+        "toggle",
+        "label",
+        "note",
+        "review",
+        "badge",
+        "input",
+        "textarea",
+        "combobox",
+        "checkbox",
+        "radio",
+        "slider",
+        "image",
+        "custom",
+        "table",
+        "list",
+        "tree",
+        "calendar"
+      ]
+    },
+    "metadata": {
+      "type": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "integer",
+        "boolean",
+        "null"
+      ]
+    },
+    "highlight": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "nodeList": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/node"
+          },
+          {
+            "$ref": "#/$defs/bareChildType"
+          }
+        ]
+      }
+    },
+    "sizeSlots": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "string",
+            "enum": [
+              "$",
+              "*"
+            ]
+          }
+        ]
+      }
+    },
+    "nodeProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "$ref": "#/$defs/labelValue"
+        },
+        "label": {
+          "$ref": "#/$defs/labelValue"
+        },
+        "hint": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "badge": {
+          "type": [
+            "string",
+            "number",
+            "integer"
+          ]
+        },
+        "count": {
+          "type": [
+            "string",
+            "number",
+            "integer"
+          ]
+        },
+        "action": {
+          "type": "string"
+        },
+        "anchor": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "menu": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/labelValue"
+          }
+        },
+        "orientation": {
+          "type": "string",
+          "enum": [
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "widths": {
+          "$ref": "#/$defs/sizeSlots"
+        },
+        "heights": {
+          "$ref": "#/$defs/sizeSlots"
+        },
+        "sizes": {
+          "$ref": "#/$defs/sizeSlots"
+        },
+        "columns": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/labelValue"
+              }
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/labelValue"
+          }
+        },
+        "children": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nodeList"
+            },
+            {
+              "$ref": "#/$defs/node"
+            }
+          ]
+        },
+        "child": {
+          "$ref": "#/$defs/node"
+        },
+        "buttons": {
+          "$ref": "#/$defs/nodeList"
+        },
+        "data": {
+          "$ref": "#/$defs/metadata"
+        },
+        "highlight": {
+          "$ref": "#/$defs/highlight"
+        },
+        "fallback": {
+          "$ref": "#/$defs/metadata"
+        }
+      }
+    },
+    "scalarLabelNode": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "propertyNames": {
+        "enum": [
+          "button",
+          "toggle",
+          "label",
+          "note",
+          "review",
+          "badge",
+          "input",
+          "textarea",
+          "combobox",
+          "checkbox",
+          "radio",
+          "slider",
+          "image",
+          "custom",
+          "table",
+          "list",
+          "tree",
+          "calendar"
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/labelValue"
+      }
+    },
+    "mappingNode": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/componentType"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "#/$defs/nodeProperties"
+          }
+        ]
+      }
+    },
+    "node": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalarLabelNode"
+        },
+        {
+          "$ref": "#/$defs/mappingNode"
+        }
+      ]
+    }
+  }
+}
