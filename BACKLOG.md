@@ -53,10 +53,10 @@
 - [ ] Decide whether `layout` should be exposed to authors or kept only as an internal AST abstraction.
   - Type: decision
   - Related: `req.ui-component-catalog`, `req.ui-layout-dsl`
-- [ ] Define project-local registration format for `custom-component` renderer mappings.
+- [ ] Define project-local registration format for `custom` renderer mappings.
   - Type: documentation
   - Related: `req.ui-component-catalog`, `req.sketch-wireframe-renderer`
-- [x] Replace `expanded` and `fixed-size` sizing wrappers with stack-level `widths` and `heights`.
+- [x] Replace wrapper-based sizing with owner component sizing properties.
   - Type: implementation
   - Related: `req.ui-layout-dsl`, `req.sketch-wireframe-renderer`
 - [ ] Implement `spacer` layout element for hstack remaining-space alignment.
@@ -164,6 +164,10 @@
 - [ ] Split the visual editor palette into layout, surface, and visible component groups.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.ui-component-catalog`
+- [ ] Align schema, parser, renderers, and visual editor palette with the canonical component vocabulary.
+  - Type: implementation
+  - Related: `req.ui-component-catalog`, `req.ui-layout-dsl`, `req.web-visual-editor`, `req.renderer-acceptance-tests`
+  - Notes: Align implementation with the canonical component set, shared `note` property, `button.badge`, `button.anchor`, `splitter.sizes`, `custom`, `combobox`, `radio`, `textarea`, and emoji-safe button labels.
 - [ ] Remove root surface entries from the tool palette and keep root surface changes in the inspector selector.
   - Type: implementation
   - Related: `req.web-visual-editor`, `req.ui-component-catalog`

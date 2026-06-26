@@ -8,6 +8,7 @@ export const paletteGroups = [
       { type: "vstack", label: "V Stack", icon: "V" },
       { type: "hstack", label: "H Stack", icon: "H" },
       { type: "grid", label: "Grid", icon: "Grid" },
+      { type: "splitter", label: "Splitter", icon: "Split" },
       { type: "spacer", label: "Spacer", icon: "Flex" },
     ],
   },
@@ -19,7 +20,11 @@ export const paletteGroups = [
       { type: "tabs", label: "Tabs", icon: "Tabs" },
       { type: "table", label: "Table", icon: "Table" },
       { type: "list", label: "List", icon: "List" },
+      { type: "tree", label: "Tree", icon: "Tree" },
+      { type: "calendar", label: "Calendar", icon: "Calendar" },
+      { type: "badge", label: "Badge", icon: "Badge" },
       { type: "image", label: "Image", icon: "Image" },
+      { type: "custom", label: "Custom", icon: "Custom" },
     ],
   },
   {
@@ -39,14 +44,15 @@ export const paletteGroups = [
       { type: "label", label: "Label", icon: "Text" },
       { type: "input", label: "Input", icon: "Input" },
       { type: "textarea", label: "Text Area", icon: "TextArea" },
-      { type: "select", label: "Combo Box", icon: "Select" },
+      { type: "combobox", label: "Combo Box", icon: "Select" },
+      { type: "slider", label: "Slider", icon: "Slider" },
     ],
   },
 ];
 
-export const layoutTypes = new Set(["vstack", "hstack", "grid", "spacer", "table-layout", "split-pane"]);
-export const containerTypes = new Set([...rootSurfaceTypes, "vstack", "hstack", "grid", "section", "tabs", "table-layout", "split-pane"]);
-export const leafTypes = new Set(["button", "checkbox", "radio", "toggle", "label", "input", "textarea", "select", "table", "image", "list", "spacer"]);
+export const layoutTypes = new Set(["vstack", "hstack", "grid", "splitter", "spacer"]);
+export const containerTypes = new Set([...rootSurfaceTypes, "vstack", "hstack", "grid", "splitter", "section", "tabs"]);
+export const leafTypes = new Set(["button", "checkbox", "radio", "toggle", "label", "input", "textarea", "combobox", "slider", "table", "image", "custom", "list", "tree", "calendar", "badge", "spacer"]);
 
 export function fieldsFor(node) {
   switch (node.type) {
@@ -61,9 +67,12 @@ export function fieldsFor(node) {
       return ["id"];
     case "grid":
       return ["id"];
+    case "splitter":
+      return ["id", "orientation"];
     case "tabs":
       return ["id"];
     case "button":
+      return ["id", "label", "badge", "action", "anchor"];
     case "checkbox":
     case "radio":
     case "toggle":
@@ -71,11 +80,18 @@ export function fieldsFor(node) {
     case "input":
     case "textarea":
       return ["id", "label", "hint"];
-    case "select":
+    case "combobox":
+      return ["id", "label", "hint"];
+    case "slider":
       return ["id", "label"];
     case "label":
     case "image":
+    case "custom":
+      return ["id", "name", "purpose"];
     case "list":
+    case "tree":
+    case "calendar":
+    case "badge":
       return ["id", "label"];
     default:
       return ["id"];

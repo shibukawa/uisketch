@@ -14,7 +14,7 @@ function writeNode(node, indent, listItem) {
   const lines = [listItem ? `${pad}- ${node.type}:` : `${pad}${node.type}:`];
   const propIndent = indent + (listItem ? 4 : 2);
   const propPad = " ".repeat(propIndent);
-  const props = Object.entries(node).filter(([key, value]) => key !== "type" && key !== "children" && (key === "data" ? value !== "" && value !== undefined : valueIsPresent(value)));
+  const props = Object.entries(node).filter(([key, value]) => key !== "type" && key !== "children" && key !== "buttons" && (key === "data" ? value !== "" && value !== undefined : valueIsPresent(value)));
 
   for (const [key, value] of props) {
     if (key === "labels" && Array.isArray(value)) {
@@ -41,6 +41,12 @@ function writeNode(node, indent, listItem) {
     lines.push(`${propPad}children:`);
     for (const child of node.children) {
       lines.push(...writeNode(child, propIndent + 2, true));
+    }
+  }
+  if (node.buttons?.length) {
+    lines.push(`${propPad}buttons:`);
+    for (const button of node.buttons) {
+      lines.push(...writeNode(button, propIndent + 2, true));
     }
   }
   return lines;
@@ -86,16 +92,17 @@ function parseNode(lines, index, indent, listItem) {
     const rest = prop[2].trim();
     index += 1;
 
-    if (key === "children") {
-      node.children = [];
+    if (key === "children" || key === "buttons") {
+      const target = [];
       while (index < lines.length) {
         index = firstContentLine(lines, index);
         if (index >= lines.length || countIndent(lines[index]) < propIndent + 2) break;
         const child = parseNode(lines, index, propIndent + 2, true);
         if (!child.node) break;
-        node.children.push(child.node);
+        target.push(child.node);
         index = child.index;
       }
+      node[key] = target;
       continue;
     }
 
@@ -276,6 +283,13 @@ function parseScalar(value) {
   if (value === "null" || value === "~") return null;
   if (value === "true") return true;
   if (value === "false") return false;
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((item) => parseScalar(item.trim()))
+      .filter((item) => item !== "");
+  }
   if (/^-?\d+$/.test(value)) return Number(value);
   if (/^-?(?:\d+\.\d+|\d+\.)$/.test(value)) return Number(value);
   if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {

@@ -16,14 +16,19 @@ type Node struct {
 	Anchor      string
 	Address     string
 	Hint        string
+	Note        string
 	Name        string
 	Purpose     string
 	Badge       string
+	Orientation string
+	Menu        []string
 	Columns     []string
+	Options     []string
 	GridColumns int
 	Labels      []TabLabel
 	Widths      []SizeSlot
 	Heights     []SizeSlot
+	Sizes       []SizeSlot
 	Children    []*Node
 }
 
@@ -57,14 +62,19 @@ func convert(n *layout.Node) *Node {
 		Anchor:      n.Anchor,
 		Address:     n.Address,
 		Hint:        n.Hint,
+		Note:        n.Note,
 		Name:        n.Name,
 		Purpose:     n.Purpose,
 		Badge:       n.Badge,
+		Orientation: n.Orientation,
+		Menu:        append([]string(nil), n.Menu...),
 		Columns:     append([]string(nil), n.Columns...),
+		Options:     append([]string(nil), n.Options...),
 		GridColumns: n.GridColumns,
 		Labels:      convertLabels(n.Labels),
 		Widths:      convertSizeSlots(n.Widths),
 		Heights:     convertSizeSlots(n.Heights),
+		Sizes:       convertSizeSlots(n.Sizes),
 	}
 	children := n.Children
 	if n.Type == "dialog" && len(n.Buttons) > 0 {

@@ -46,6 +46,72 @@ func TestRenderEquipmentList(t *testing.T) {
 	}
 }
 
+func TestRenderButtonBadgeAndNoteMarkers(t *testing.T) {
+	got := Render(&sketch.Document{Root: &sketch.Node{
+		Type: "window",
+		Children: []*sketch.Node{{
+			Type:  "button",
+			Label: "Inbox",
+			Badge: "1",
+			Note:  "Check notification count.",
+		}},
+	}})
+	for _, want := range []string{"[1]──", "[1] Check notification count."} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("ASCII output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderGrowsForLongForms(t *testing.T) {
+	var children []*sketch.Node
+	for i := 0; i < 16; i++ {
+		children = append(children, &sketch.Node{Type: "input", Label: "Field " + string(rune('A'+i))})
+	}
+	got := Render(&sketch.Document{Root: &sketch.Node{Type: "window", Children: children}})
+	if lines := strings.Count(got, "\n") + 1; lines <= defaultHeight {
+		t.Fatalf("rendered height = %d, want greater than default %d:\n%s", lines, defaultHeight, got)
+	}
+	if !strings.Contains(got, "Field P") {
+		t.Fatalf("ASCII output does not contain final field:\n%s", got)
+	}
+}
+
+func TestDistributeHorizontalLeavesRemainingSpaceWithoutSpacer(t *testing.T) {
+	children := []*sketch.Node{
+		{Type: "label", Label: "Screen title"},
+		{Type: "button", Label: "Primary action"},
+	}
+	got := distributeHorizontal(70, children, nil, false)
+	want := []int{20, 18}
+	if len(got) != len(want) {
+		t.Fatalf("width count = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("widths = %#v, want %#v", got, want)
+		}
+	}
+}
+
+func TestDistributeHorizontalSpacerAbsorbsRemainingSpace(t *testing.T) {
+	children := []*sketch.Node{
+		{Type: "label", Label: "Screen title"},
+		{Type: "spacer"},
+		{Type: "button", Label: "Primary action"},
+	}
+	got := distributeHorizontal(70, children, nil, false)
+	want := []int{20, 32, 18}
+	if len(got) != len(want) {
+		t.Fatalf("width count = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("widths = %#v, want %#v", got, want)
+		}
+	}
+}
+
 func TestRenderTabsShowsOnlyActiveBody(t *testing.T) {
 	got := Render(&sketch.Document{Root: &sketch.Node{
 		Type: "window",

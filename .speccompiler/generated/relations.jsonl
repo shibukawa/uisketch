@@ -124,6 +124,7 @@
 {"source_id": "req.web-visual-editor", "target_id": "req.frontend-workspace", "relation": "links_to", "section": "Summary", "target_path": "specs/frontend-workspace.md"}
 {"source_id": "req.web-visual-editor", "target_id": "req.frontend-workspace", "relation": "links_to", "section": "Architecture Recommendation", "target_path": "specs/frontend-workspace.md"}
 {"source_id": "req.web-visual-editor", "target_id": "req.ui-component-catalog", "relation": "links_to", "section": "Editor Document Model", "target_path": "specs/ui-component-catalog.md"}
+{"source_id": "req.web-visual-editor", "target_id": "req.ui-component-catalog", "relation": "links_to", "section": "Palette And Root Surface Selection", "target_path": "specs/ui-component-catalog.md"}
 {"source_id": "req.web-visual-editor", "target_id": "req.ui-layout-dsl", "relation": "links_to", "section": "Inspector Editing Details", "target_path": "specs/ui-layout-dsl.md"}
 {"source_id": "req.web-visual-editor", "target_id": "req.ui-validation-rules", "relation": "links_to", "section": "Validation Feedback", "target_path": "specs/ui-validation-rules.md"}
 {"source_id": "req.web-visual-editor", "target_id": "req.frontend-workspace", "relation": "links_to", "section": "First Runnable Editor Slice", "target_path": "specs/frontend-workspace.md"}

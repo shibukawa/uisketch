@@ -21,18 +21,18 @@ browser:
                 - button:
                     label: Refresh
                     action: action.refresh-equipment
-                - icon-button:
+                - button:
                     label: CSV
                     action: action.export-equipment
-                - floating-action-button:
+                - button:
                     label: Add
                     action: action.create-alert
-                - badge-button:
+                - button:
                     label: Alerts
                     badge: 12
-                - toggle-button:
+                - toggle:
                     label: Offline
-                - link:
+                - button:
                     label: Detail
                     anchor: equipment-detail
           - table:
@@ -42,5 +42,7 @@ browser:
                 - Status
                 - Owner
           - label: Updated just now
-          - hint: Verify warning status with operations.
+          - label:
+              label: Verify warning status with operations.
+              note: Confirm thresholds with operations.
 ```

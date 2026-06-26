@@ -37,7 +37,7 @@ Primary user workflows:
 - Drag components such as `button`, `input`, `table`, `list`, `image`, `vstack`, and `hstack` from a palette.
 - Drop components into valid containers or between sibling components.
 - Reorder components by drag and drop.
-- Select a component and edit semantic properties such as `id`, `label`, `action`, `hint`, `columns`, `children`, and `data`.
+- Select a component and edit semantic properties such as `id`, `label`, `action`, `hint`, `note`, `columns`, `children`, and `data`.
 - Inspect and navigate the layout through a tree structure view.
 - Preview the generated sketch SVG using the same Go renderer logic as the CLI.
 - View or edit the generated `.uisketch.md` source, including direct editing of explicit `uisketch` source fence bodies.
@@ -151,11 +151,17 @@ The component palette should contain insertable canvas components only.
 Required behavior:
 
 - Root surface types such as `browser`, `window`, `mobile`, `dialog`, and `menu` should not appear as draggable palette items.
+- Palette item types must use the baseline component names from [UI Component Catalog](ui-component-catalog.md). The editor must offer and emit `toggle` for on/off controls and `combobox` for closed-choice or suggested-choice inputs.
+- The palette should include every baseline component that the visual editor can create, including structural components such as `splitter`, visible controls such as `radio`, `textarea`, and `combobox`, and data displays such as `tree`, `calendar`, and `badge` when supported by schema, renderer, and inspector defaults.
+- The tree structure view should sit below the component palette in the left-side authoring rail so the properties inspector can use the right rail without competing with hierarchy navigation.
+- Component keys outside the baseline catalog must not be offered as palette items. Source using unsupported component names should receive validation feedback until rewritten to supported baseline components or shared element properties such as `note`, `highlight`, `prompt`, `data`, `button.anchor`, or `button.badge`.
 - The root surface type should be changed through the root component inspector selector.
 - Changing the root surface type must preserve child layout content.
 - Surface-specific hidden fields should be preserved while switching surfaces when doing so helps restore user input later. For example, a previous `browser.address` value and a previous titled-surface `title` value may be retained in editor state or hidden root metadata when the user switches to `menu`, then restored if the user switches back to a surface that uses that field.
 - Hidden preserved fields must not be emitted as visible controls or canvas chrome for a surface that does not support them.
 - The `menu` root surface does not have a visible `title` property in the inspector and does not render a title on the canvas.
+- The root inspector should expose the `menu` property only for `window` and `mobile` roots. The editor should present it as an ordered list of text labels, serialize it as `menu: [File, Edit, View]` or equivalent YAML list syntax, and omit it when empty.
+- `window.menu` and `mobile.menu` are root chrome attributes, not draggable palette components and not entries in `children`.
 
 ## Canvas Interaction Details
 
@@ -173,7 +179,7 @@ Drag insertion targets:
 Canvas selection:
 
 - The selected component outline must distinguish layout-only components from visible/content components.
-- Layout-only components such as `vstack`, `hstack`, `grid`, `spacer`, `table-layout`, and `split-pane` should use a dashed selection outline or other dashed treatment consistent with their layout-only canvas boundary.
+- Layout-only components such as `vstack`, `hstack`, `grid`, `spacer`, and `splitter` should use a dashed selection outline or other dashed treatment consistent with their layout-only canvas boundary.
 - Visible/content components should use a solid selection outline.
 - Selection treatment should not add persistent labels or explanatory chrome that would be confused with the authored UI.
 
@@ -195,7 +201,7 @@ Required rendering guidance:
 - The component type name, debug labels, placeholder captions, and instructional chrome should be omitted from visible leaf components in normal canvas rendering.
 - Layout-only components may keep subtle dashed boundaries because they otherwise have no visible authored representation.
 - A `label` component should render primarily as its authored label text. It should not add a border, the word `label`, muted duplicate text, or extra debug text.
-- A `button` component should render like a button whose visible text is its authored label. It should not add an additional component header inside the button body.
+- A `button` component should render like a button whose visible text is its authored label. It should not add an additional component header inside the button body. Emoji-only labels are allowed and should size the button so the emoji is not clipped.
 - An `input` component should render like an input field using its authored label and hint, without extra debug framing beyond what helps identify the field.
 - A `table` component should render as a simple table-like surface with column headers and at least one empty or sample body row, rather than a pipe-delimited text line.
 - `image` and `list` may use lightweight placeholders, but those placeholders should still look like the authored UI element rather than a debug node record.
@@ -204,9 +210,19 @@ Required rendering guidance:
 Root surface chrome:
 
 - `browser` canvas chrome should resemble a browser frame with back, forward, reload, address display, and three window control buttons.
-- `window` canvas chrome should show a title-bar style frame with three window control buttons.
-- `dialog` canvas chrome should show a compact title-bar style frame with one close button.
+- `window` canvas chrome should show a title-bar style frame with three window control buttons. When `window.menu` is present, the canvas should show a fixed top menu row below the title bar and should keep ordinary `children` content below that row.
+- `mobile` canvas chrome should show the device frame and title treatment when present. When `mobile.menu` is present, the canvas should show a fixed bottom navigation/command row inside the device frame and keep ordinary `children` content above that row.
+- `dialog` canvas chrome should show a compact title-bar style frame with one close button. When `dialog.buttons` is present, the canvas should show a fixed bottom action row with buttons right-aligned.
 - `menu` canvas chrome should not show a title.
+
+Dialog buttons:
+
+- The visual editor should support `dialog.buttons` as a first-class root property when the selected root is `dialog`.
+- `dialog.buttons` should be edited as an ordered list of ordinary button nodes, with at least `label`, `action`, `anchor`, `badge`, `note`, `prompt`, and `data` fields available through the same inspector behavior used for normal `button` components.
+- The visual canvas should render `button.badge` as a small marker on the button border using the authored value as plain text inside the marker.
+- Canvas selection should make dialog action buttons selectable and editable, but their insertion surface should be visually separate from main `children` so authors understand they serialize under `buttons`, not under `children`.
+- Dragging a button into the dialog action row should insert into `buttons`; dragging a non-button component there may be rejected or converted only through an explicit user action. The baseline authoring path should prefer `button` nodes.
+- Empty `dialog.buttons` should be omitted from serialized YAML.
 
 Spacer rendering:
 
@@ -298,7 +314,7 @@ Tabs inspector:
 
 - `tabs.labels` should not be edited as raw YAML syntax in a single text field when a structured UI is available.
 - The inspector should present tab labels as an editable list of items.
-- The selected tab should be edited separately from the label list, preferably with a select control populated from the current tab labels.
+- The selected tab should be edited separately from the label list, preferably with a combobox control populated from the current tab labels.
 - Inspector changes should serialize back to the canonical YAML array representation used by [UI Layout DSL](ui-layout-dsl.md).
 - If the selected tab is removed or renamed, the inspector should deterministically choose a valid selected tab or report a local inspector validation issue before committing.
 
@@ -370,7 +386,7 @@ These features are not required for the first runnable editor slice, but they ar
 | Print/PDF export | Useful for reviews and offline sharing. |
 | Side-by-side diff | Shows how visual edits changed the YAML source. |
 | Sample gallery | Helps first-time users understand supported component patterns. |
-| Accessibility labels checklist | Finds missing labels on interactive components such as `icon-button`. |
+| Accessibility labels checklist | Finds missing labels on interactive components, including compact or emoji-only buttons. |
 
 Follow-up features must preserve the canonical source rule: `.uisketch.md` and its explicit `uisketch` source fences remain the source of truth, while copied or exported outputs are generated artifacts.
 
@@ -439,6 +455,7 @@ Example mapping:
 | `window` | `w` |
 | `vstack` | `v` |
 | `hstack` | `h` |
+| `splitter` | `s` |
 | `button` | `B` |
 | `label` | `L` |
 | `input` | `I` |
@@ -447,12 +464,16 @@ Example mapping:
 | `id` | `i` |
 | `title` | `Tt` |
 | `label` field | `l` |
+| `note` field | `n` |
 | `action` | `a` |
 | `anchor` | `k` |
 | `buttons` | `bs` |
-| `hint` | `n` |
+| `menu` root field | `m` |
+| `input hint` field | `ih` |
 | `data` | `d` |
 | `columns` | `C` |
+| `orientation` | `o` |
+| `sizes` | `ss` |
 | `widths` | `ws` |
 | `heights` | `hs` |
 
@@ -605,20 +626,18 @@ Layout-only components include:
 - `hstack`
 - `grid`
 - `spacer`
-- `table-layout`
-- `split-pane`
+- `splitter`
 
 Layout-only components should use a structural treatment such as a dashed outline, lighter fill, layout glyph, or muted chrome. This treatment communicates that they arrange children rather than represent visible product UI.
 
-Visible or content-bearing components such as `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `dialog`, `menu`, and `custom-component` should use a stronger component treatment that resembles a concrete UI object or semantic surface.
+Visible or content-bearing components such as `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `dialog`, `menu`, and `custom` should use a stronger component treatment that resembles a concrete UI object or semantic surface.
 
 The palette should separate layout components from visible/content components. A minimal grouping is:
 
 | Palette Group | Examples |
 | --- | --- |
-| Layout | `vstack`, `hstack`, `grid`, `spacer`, `table-layout`, `split-pane` |
-| Surfaces | `browser`, `window`, `mobile`, `dialog`, `menu` |
-| Components | `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `custom-component` |
+| Layout | `vstack`, `hstack`, `grid`, `spacer`, `splitter` |
+| Components | `button`, `label`, `input`, `table`, `list`, `image`, `section`, `tabs`, `custom` |
 
 The palette grouping is an authoring affordance only. It must not change the canonical component vocabulary or generated YAML.
 
@@ -629,7 +648,7 @@ The editor document always has exactly one root component.
 Required behavior:
 
 - The root component cannot be deleted from the canvas, tree, hover menu, inspector, or keyboard commands.
-- The root component type can be changed through the inspector using a select control.
+- The root component type can be changed through the inspector using a combobox control.
 - The first supported root type choices should include `browser`, `window`, `mobile`, `dialog`, and `menu`.
 - Changing the root type preserves compatible fields such as `id`, `title`, and `children`.
 - Changing the root type drops or hides fields that are not meaningful for the selected root type, such as `browser.address` when switching to `window`.
@@ -688,7 +707,7 @@ The editor should create structure according to these deterministic rules:
 | Drop `grid` | Create `grid` with `columns: 2` unless the user chooses another column count. |
 | Drop `tabs` | Create `tabs` with safe default labels and one active child body. |
 | Drop `spacer` into `hstack` | Insert an invisible spacer child. |
-| Drop major content next to sidebar-like content | Prefer `hstack` with `widths: [25, 75]` when the user chooses that placement. |
+| Drop major content next to side-panel-like content | Prefer `hstack` with `widths: [25, 75]` when the user chooses that placement. |
 | Drop table/list/image as main content | Prefer the parent's default remaining-space behavior, or set `widths`/`heights` when the user asks for a specific proportion. |
 
 The editor should show the generated structure in the YAML/source panel so users can learn and review the canonical model.
@@ -753,7 +772,7 @@ In scope:
 - Compact insertion targets that expand and highlight only during active drag/drop operations.
 - Hover highlight and top-right delete affordance for non-root components.
 - Root component type selection in the inspector without allowing root deletion.
-- Edit `id`, root `title`, `label`, `action`, `anchor`, and `hint` fields.
+- Edit `id`, root `title`, root `menu` for `window` and `mobile`, `dialog.buttons`, `label`, `action`, `anchor`, `hint`, and `note` fields. The `note` field should be a single-line inspector input.
 - Render SVG preview after each committed edit.
 - Render SVG and ASCII previews from source mode through the same Go Wasm renderer path used by the CLI.
 - Provide source editor highlighting, basic keyword/schema diagnostics, and completion for the first-slice component and property set.
@@ -829,4 +848,4 @@ Out of scope:
 
 ## Native-Language Summary
 
-ブラウザ版エディタは、VB のフォームエディタのように palette から semantic component をドラッグして canvas に置き、inspector で `id` や `label` などを編集する authoring surface とする。canvas だけでなく tree structure view でも component hierarchy を確認・選択・並べ替えでき、tree は `.uisketch.md` 内の明示的な `uisketch` source fence body から復元される projection として扱う。drop target は通常時は 3px 程度の省スペースな挿入線として扱い、drag 中だけ展開・ハイライトして挿入位置を示す。layout component（vstack、hstack、grid、spacer など）と visible/content component は palette group と canvas styling の両方で区別し、layout component は破線や薄い chrome で構造要素であることを示す。component hover では非 root component の右上に削除 affordance を表示するが、root component は常に 1 つ必要なので削除不可とし、inspector の select で browser/window/mobile/dialog/menu などへ入れ替える。source editor では `.uisketch.md` 全体または選択中の `uisketch` source fence body を直接編集でき、ビジュアル編集結果は read-only YAML viewer で正規化 YAML として確認できる。保存される正は editor 独自形式ではなく `type: uisketch` の frontmatter と `uisketch` fence を持つ `.uisketch.md` であり、parse、validation、layout normalize、SVG preview、ASCII/text 変換は Go 実装を Wasm で呼び出して CLI と同じロジックを使う。New browser/New window などの新規作成、別 document/file の load、browser tab/window close は dirty な変更がある場合に破棄確認を出す。ブラウザモードでは名前付き document を localStorage に保存・読込・削除でき、共有 URL は現在の URL に canonical content key を `#s=` として付けて復元可能にする。ローカルプロジェクトモードでは Go backend が project root 内のファイル一覧、open、save、新規作成を担当し、localStorage 保存と共有 URL は使わない。CLI からファイル名付きで起動するとそのファイルを直接開く。将来的な Wails standalone app でも同じ Go file service と dirty close confirmation を再利用できるようにする。出力操作として source code、raw YAML source、変換済み text、share URL、validation findings をコピーでき、`.uisketch.md`、raw YAML、text、SVG、compact payload をダウンロードできる。padding や gap は v0.1 では YAML の属性にせず、editor/renderer の既定 spacing policy として 16px root inset、8px stack gap、12px container inset を自動適用する。エディタは GitHub Pages に配置できる静的 Web アプリとして成立させ、Wasm と assets は相対 URL または base path 設定で読み込む。追加候補として undo/redo、shortcuts、templates、validation panel、Markdown embed export、PNG/PDF export、diff、sample gallery、accessibility checklist を検討する。
+ブラウザ版エディタは、VB のフォームエディタのように palette から semantic component をドラッグして canvas に置き、inspector で `id` や `label` などを編集する authoring surface とする。canvas だけでなく tree structure view でも component hierarchy を確認・選択・並べ替えでき、tree は `.uisketch.md` 内の明示的な `uisketch` source fence body から復元される projection として扱う。drop target は通常時は 3px 程度の省スペースな挿入線として扱い、drag 中だけ展開・ハイライトして挿入位置を示す。layout component（vstack、hstack、grid、spacer など）と visible/content component は palette group と canvas styling の両方で区別し、layout component は破線や薄い chrome で構造要素であることを示す。component hover では非 root component の右上に削除 affordance を表示するが、root component は常に 1 つ必要なので削除不可とし、inspector の combobox で browser/window/mobile/dialog/menu などへ入れ替える。source editor では `.uisketch.md` 全体または選択中の `uisketch` source fence body を直接編集でき、ビジュアル編集結果は read-only YAML viewer で正規化 YAML として確認できる。保存される正は editor 独自形式ではなく `type: uisketch` の frontmatter と `uisketch` fence を持つ `.uisketch.md` であり、parse、validation、layout normalize、SVG preview、ASCII/text 変換は Go 実装を Wasm で呼び出して CLI と同じロジックを使う。New browser/New window などの新規作成、別 document/file の load、browser tab/window close は dirty な変更がある場合に破棄確認を出す。ブラウザモードでは名前付き document を localStorage に保存・読込・削除でき、共有 URL は現在の URL に canonical content key を `#s=` として付けて復元可能にする。ローカルプロジェクトモードでは Go backend が project root 内のファイル一覧、open、save、新規作成を担当し、localStorage 保存と共有 URL は使わない。CLI からファイル名付きで起動するとそのファイルを直接開く。将来的な Wails standalone app でも同じ Go file service と dirty close confirmation を再利用できるようにする。出力操作として source code、raw YAML source、変換済み text、share URL、validation findings をコピーでき、`.uisketch.md`、raw YAML、text、SVG、compact payload をダウンロードできる。padding や gap は v0.1 では YAML の属性にせず、editor/renderer の既定 spacing policy として 16px root inset、8px stack gap、12px container inset を自動適用する。エディタは GitHub Pages に配置できる静的 Web アプリとして成立させ、Wasm と assets は相対 URL または base path 設定で読み込む。追加候補として undo/redo、shortcuts、templates、validation panel、Markdown embed export、PNG/PDF export、diff、sample gallery、accessibility checklist を検討する。

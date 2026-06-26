@@ -21,15 +21,20 @@ dialog:
           section:
             title: Summary
             children:
-              - note: Requires supervisor review before closing.
+              - label:
+                  label: Supervisor approval required.
+                  note: Requires supervisor review before closing.
     - grid:
         children:
-          - custom-component:
+          - custom:
               name: alert-severity-map
               purpose: Shows affected equipment by severity.
-          - review: Should escalation be automatic after 30 minutes?
-          - button:
-              label: Approve
-          - button:
-              label: Cancel
+          - label:
+              label: Should escalation be automatic after 30 minutes?
+              note: Resolve escalation policy.
+  buttons:
+    - button:
+        label: Cancel
+    - button:
+        label: Approve
 ```

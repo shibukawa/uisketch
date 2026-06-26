@@ -35,6 +35,12 @@ export function createRoot(type) {
   };
   if (type !== "menu") root.title = titles[type] || "Sketch";
   if (type === "browser") root.address = "https://example.test";
+  if (type === "window") root.menu = ["File", "Edit", "View"];
+  if (type === "mobile") root.menu = ["Home", "Search", "Settings"];
+  if (type === "dialog") root.buttons = [
+    { type: "button", label: "Cancel" },
+    { type: "button", label: "OK" },
+  ];
   return root;
 }
 
@@ -54,14 +60,24 @@ export function createDefaultNode(type, suffix) {
       return { type, id: `input-${suffix}`, label: "Input", hint: "text" };
     case "textarea":
       return { type, id: `textarea-${suffix}`, label: "Text area", hint: "multiline text" };
-    case "select":
-      return { type, id: `select-${suffix}`, label: "Combo box", options: ["Option 1", "Option 2"] };
+    case "combobox":
+      return { type, id: `combobox-${suffix}`, label: "Combo box", hint: "select", options: ["Option 1", "Option 2"] };
+    case "slider":
+      return { type, id: `slider-${suffix}`, label: "Slider" };
     case "table":
       return { type, id: `table-${suffix}`, columns: ["Name", "Status"] };
     case "image":
       return { type, label: "Image" };
+    case "custom":
+      return { type, name: "custom-widget", purpose: "Project-defined component" };
     case "list":
       return { type, label: "List" };
+    case "tree":
+      return { type, label: "Tree" };
+    case "calendar":
+      return { type, label: "Calendar" };
+    case "badge":
+      return { type, label: "Badge" };
     case "section":
       return { type, title: "Section", children: [] };
     case "tabs":
@@ -76,6 +92,17 @@ export function createDefaultNode(type, suffix) {
       };
     case "grid":
       return { type, id: `grid-${suffix}`, columns: 2, children: [] };
+    case "splitter":
+      return {
+        type,
+        id: `splitter-${suffix}`,
+        orientation: "horizontal",
+        sizes: [25, 75],
+        children: [
+          { type: "section", title: "Primary", children: [] },
+          { type: "section", title: "Secondary", children: [] },
+        ],
+      };
     case "spacer":
       return { type };
     case "hstack":
@@ -92,5 +119,5 @@ export function displayName(node) {
 
 export function leafText(node) {
   if (node.type === "table") return (node.columns || []).join(" | ") || "Table";
-  return node.label || node.title || node.id || node.type;
+  return node.label || node.title || node.name || node.purpose || node.id || node.type;
 }

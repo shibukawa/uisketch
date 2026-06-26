@@ -91,18 +91,23 @@ browser:
 - `vstack`
 - `hstack`
 - `grid`
+- `splitter`
 - `tabs`
 - `section`
-- `sidebar`
-- `split-pane`
 
 通常、visible content や振る舞いを持つ leaf node は次のようなものです。
 
 - `button`
+- `toggle`
 - `input`
+- `textarea`
+- `combobox`
+- `checkbox`
+- `radio`
 - `label`
 - `table`
 - `image`
+- `custom`
 - `list`
 - `spacer`
 
@@ -140,4 +145,3 @@ active body は `children` に、tab label は `labels` に置きます。
 - [Web Visual Editor](specs/web-visual-editor.md)
 - [UI Component Catalog](specs/ui-component-catalog.md)
 - [UI Layout DSL](specs/ui-layout-dsl.md)
-

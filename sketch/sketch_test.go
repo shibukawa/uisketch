@@ -6,23 +6,32 @@ import (
 	"uisketch/layout"
 )
 
-func TestFromLayoutKeepsSplitPaneChildrenFlat(t *testing.T) {
+func TestFromLayoutKeepsSplitterChildrenFlat(t *testing.T) {
 	doc := FromLayout("", &layout.Node{
 		Type: "window",
+		Menu: []string{"File", "Edit"},
 		Children: []*layout.Node{{
-			Type: "split-pane",
+			Type:        "splitter",
+			Orientation: "horizontal",
+			Sizes:       []layout.SizeSlot{{Percent: 30}, {Percent: 70}},
 			Children: []*layout.Node{
-				{Type: "sidebar", Title: "Filters"},
+				{Type: "section", Title: "Filters"},
 				{Type: "table", ID: "equipment-list"},
 			},
 		}},
 	})
 	children := doc.Root.Children[0].Children
-	if got := children[0].Type; got != "sidebar" {
-		t.Fatalf("first split child type = %q, want sidebar", got)
+	if got := children[0].Type; got != "section" {
+		t.Fatalf("first split child type = %q, want section", got)
 	}
 	if got := children[1].Type; got != "table" {
 		t.Fatalf("last split child type = %q, want table", got)
+	}
+	if got := doc.Root.Children[0].Sizes[0].Percent; got != 30 {
+		t.Fatalf("first splitter size = %d, want 30", got)
+	}
+	if got := doc.Root.Menu; len(got) != 2 || got[0] != "File" || got[1] != "Edit" {
+		t.Fatalf("root menu = %#v, want File/Edit", got)
 	}
 }
 

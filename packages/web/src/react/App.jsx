@@ -312,19 +312,21 @@ export function App() {
         </div>
         {editorMode === "visual" ? (
           <section className="grid grid-cols-[340px_minmax(520px,1fr)_320px] gap-3" data-testid="visual-mode">
-            <aside className="card h-[calc(100vh-124px)] overflow-auto bg-base-100">
-              <ToolPalette />
+            <aside className="card grid h-[calc(100vh-124px)] min-h-0 grid-rows-[minmax(220px,1fr)_minmax(180px,0.7fr)] overflow-hidden bg-base-100">
+              <div className="min-h-0 overflow-auto">
+                <ToolPalette />
+              </div>
+              <TreePanel />
             </aside>
             <section className="card h-[calc(100vh-124px)] min-h-0 bg-base-100">
               <div className="pane-title">Visual Editor</div>
               <Canvas />
             </section>
-            <aside className="card grid h-[calc(100vh-124px)] min-h-0 grid-rows-[auto_minmax(180px,auto)_auto_minmax(180px,1fr)] overflow-hidden bg-base-100">
+            <aside className="card grid h-[calc(100vh-124px)] min-h-0 grid-rows-[auto_1fr] overflow-hidden bg-base-100">
               <div className="pane-title">Properties</div>
               <div className="overflow-auto">
                 <Inspector />
               </div>
-              <TreePanel />
             </aside>
           </section>
         ) : (

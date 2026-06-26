@@ -1,7 +1,13 @@
 export function getNode(root, path) {
   let node = root;
-  for (const index of path) {
-    node = node?.children?.[index];
+  let collection = "children";
+  for (const segment of path) {
+    if (segment === "buttons") {
+      collection = "buttons";
+      continue;
+    }
+    node = node?.[collection]?.[segment];
+    collection = "children";
   }
   return node || null;
 }
@@ -9,6 +15,7 @@ export function getNode(root, path) {
 export function walk(node, path, visit) {
   visit(node, path);
   (node.children || []).forEach((child, index) => walk(child, [...path, index], visit));
+  (node.buttons || []).forEach((button, index) => walk(button, [...path, "buttons", index], visit));
 }
 
 export function samePath(a, b) {

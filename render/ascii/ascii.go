@@ -1,6 +1,7 @@
 package ascii
 
 import (
+	"strconv"
 	"strings"
 
 	"uisketch/sketch"
@@ -22,19 +23,59 @@ type rect struct {
 	x, y, w, h int
 }
 
+type notes []string
+
 func Render(doc *sketch.Document) string {
 	if doc == nil || doc.Root == nil {
 		return ""
 	}
-	c := newCanvas(defaultWidth, defaultHeight)
-	renderRoot(c, rect{0, 0, c.w, c.h}, doc)
-	return c.String()
+	c := newCanvas(defaultWidth, max(defaultHeight, requiredRootHeight(doc.Root)))
+	var ns notes
+	renderRoot(c, rect{0, 0, c.w, c.h}, doc, &ns)
+	out := c.String()
+	if len(ns) == 0 {
+		return out
+	}
+	var b strings.Builder
+	b.WriteString(out)
+	for i, note := range ns {
+		b.WriteString("\n")
+		b.WriteString("[")
+		b.WriteString(intString(i + 1))
+		b.WriteString("] ")
+		b.WriteString(note)
+	}
+	return b.String()
 }
 
-func renderRoot(c *canvas, r rect, doc *sketch.Document) {
+func requiredRootHeight(root *sketch.Node) int {
+	content := childrenVStackHeight(root.Children)
+	switch root.Type {
+	case "browser":
+		return content + 5
+	case "window":
+		menu := 0
+		if len(root.Menu) > 0 {
+			menu = 2
+		}
+		return content + menu + 4
+	case "dialog", "menu":
+		return content + 4
+	case "mobile":
+		menu := 0
+		if len(root.Menu) > 0 {
+			menu = 3
+		}
+		return content + menu + 7
+	default:
+		return intrinsicHeight(root) + 2
+	}
+}
+
+func renderRoot(c *canvas, r rect, doc *sketch.Document, ns *notes) {
 	root := doc.Root
 	if root.Type == "mobile" {
-		renderMobileRoot(c, r, doc)
+		renderMobileRoot(c, r, doc, ns)
 		return
 	}
 	drawBox(c, r)
@@ -48,27 +89,34 @@ func renderRoot(c *canvas, r rect, doc *sketch.Document) {
 			writeText(c, r.x+8, r.y+2, "[ "+root.Address+" ]")
 		}
 		drawHLine(c, r.x, r.y+3, r.w)
-		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 4, r.w - 2, r.h - 5}, root.Children)
+		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 4, r.w - 2, r.h - 5}, root.Children, ns)
 	case "window":
 		writeText(c, r.x+2, r.y+1, title)
 		writeRight(c, r.x+r.w-2, r.y+1, "○ ○ ○")
 		drawHLine(c, r.x, r.y+2, r.w)
-		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}, root.Children)
+		content := rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}
+		if len(root.Menu) > 0 && content.h > 2 {
+			writeText(c, content.x+1, content.y, strings.Join(root.Menu, "   "))
+			drawHLine(c, r.x, content.y+1, r.w)
+			content.y += 2
+			content.h -= 2
+		}
+		renderChildrenAsVStack(c, content, root.Children, ns)
 	case "dialog":
 		writeCentered(c, r.x+1, r.y+1, r.w-2, title)
 		writeRight(c, r.x+r.w-2, r.y+1, "○")
 		drawHLine(c, r.x, r.y+2, r.w)
-		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}, root.Children)
+		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}, root.Children, ns)
 	case "menu":
 		writeText(c, r.x+2, r.y+1, title)
 		drawHLine(c, r.x, r.y+2, r.w)
-		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}, root.Children)
+		renderChildrenAsVStack(c, rect{r.x + 1, r.y + 3, r.w - 2, r.h - 4}, root.Children, ns)
 	default:
-		renderNode(c, inset(r, 1), root)
+		renderNode(c, inset(r, 1), root, ns)
 	}
 }
 
-func renderMobileRoot(c *canvas, r rect, doc *sketch.Document) {
+func renderMobileRoot(c *canvas, r rect, doc *sketch.Document, ns *notes) {
 	root := doc.Root
 	title := rootTitle(doc)
 	phoneW := min(32, max(12, r.w-4))
@@ -86,10 +134,17 @@ func renderMobileRoot(c *canvas, r rect, doc *sketch.Document) {
 	if title == "" {
 		contentTop = 3
 	}
-	renderChildrenAsVStack(c, rect{phone.x + 2, phone.y + contentTop, phone.w - 4, max(0, phone.h-contentTop-3)}, root.Children)
+	content := rect{phone.x + 2, phone.y + contentTop, phone.w - 4, max(0, phone.h-contentTop-3)}
+	if len(root.Menu) > 0 && content.h > 3 {
+		menuY := content.y + content.h - 2
+		drawHLine(c, phone.x+1, menuY-1, phone.w-2)
+		writeCentered(c, phone.x+2, menuY, phone.w-4, strings.Join(root.Menu, " | "))
+		content.h -= 3
+	}
+	renderChildrenAsVStack(c, content, root.Children, ns)
 }
 
-func renderNode(c *canvas, r rect, n *sketch.Node) {
+func renderNode(c *canvas, r rect, n *sketch.Node, ns *notes) {
 	if n == nil || r.w <= 0 || r.h <= 0 {
 		return
 	}
@@ -97,45 +152,40 @@ func renderNode(c *canvas, r rect, n *sketch.Node) {
 	case "spacer":
 		return
 	case "vstack":
-		renderChildrenAsVStackWithHeights(c, r, n.Children, n.Heights)
-	case "hstack", "menubar":
-		if n.Type == "menubar" {
-			writeText(c, r.x, r.y, strings.Join(childLabels(n), "     "))
-			return
-		}
-		renderChildrenAsHStack(c, r, n.Children, n.Widths)
-	case "expanded":
-		renderSingleChild(c, r, n)
-	case "fixed-size":
-		renderSingleChild(c, fixedRect(r), n)
-	case "grid", "table-layout":
-		renderGrid(c, r, n)
-	case "split-pane":
-		renderChildrenAsHStack(c, r, n.Children, nil)
+		renderChildrenAsVStackWithHeights(c, r, n.Children, n.Heights, ns)
+	case "hstack":
+		renderChildrenAsHStack(c, r, n.Children, n.Widths, ns)
+	case "grid":
+		renderGrid(c, r, n, ns)
+	case "splitter":
+		renderSplitter(c, r, n, ns)
 	case "tabs":
-		renderTabs(c, r, n)
-	case "section", "sidebar":
+		renderTabs(c, r, n, ns)
+	case "section":
 		drawBox(c, r)
 		writeText(c, r.x+2, r.y, " "+labelFor(n)+" ")
-		renderChildrenAsVStack(c, inset(r, 1), n.Children)
-	case "button", "icon-button", "floating-action-button", "badge-button", "toggle-button":
+		renderChildrenAsVStack(c, inset(r, 1), n.Children, ns)
+	case "button":
 		renderButton(c, r, n)
-	case "link":
-		writeText(c, r.x, r.y, "<"+labelFor(n)+">")
 	case "label":
-		writeText(c, r.x, r.y, labelFor(n))
-	case "hint":
-		writeText(c, r.x, r.y, "? "+labelFor(n))
-	case "note":
-		writeText(c, r.x, r.y, "Note: "+labelFor(n))
-	case "review":
-		writeText(c, r.x, r.y, "Review: "+labelFor(n))
+		if n.Note != "" {
+			*ns = append(*ns, n.Note)
+			writeTextClipped(c, r.x, r.y, r.w, "["+intString(len(*ns))+"]"+labelFor(n))
+			return
+		}
+		writeTextClipped(c, r.x, r.y, r.w, labelFor(n))
 	case "input":
 		renderInput(c, r, n)
 	case "checkbox":
 		writeText(c, r.x, r.y, "[ ] "+labelFor(n))
-	case "switch":
+	case "radio":
+		writeText(c, r.x, r.y, "( ) "+labelFor(n))
+	case "toggle":
 		writeText(c, r.x, r.y, "[off] "+labelFor(n))
+	case "textarea":
+		renderTextarea(c, r, n)
+	case "combobox":
+		renderCombobox(c, r, n)
 	case "slider":
 		writeText(c, r.x, r.y, labelFor(n)+" ─────○────")
 	case "table":
@@ -148,26 +198,23 @@ func renderNode(c *canvas, r rect, n *sketch.Node) {
 		renderList(c, r, n, "Calendar")
 	case "badge":
 		writeText(c, r.x, r.y, "("+labelFor(n)+")")
-	case "image", "custom-component":
-		drawBox(c, r)
-		writeCentered(c, r.x+1, r.y+r.h/2, r.w-2, labelFor(n))
-		if r.h >= 4 && r.w >= 8 {
-			put(c, r.x+2, r.y+1, '╲')
-			put(c, r.x+r.w-3, r.y+1, '╱')
-			put(c, r.x+2, r.y+r.h-2, '╱')
-			put(c, r.x+r.w-3, r.y+r.h-2, '╲')
-		}
+	case "image", "custom":
+		renderImagePlaceholder(c, r, n)
 	default:
 		drawBox(c, r)
 		writeCentered(c, r.x+1, r.y+r.h/2, r.w-2, labelFor(n))
 	}
+	if n.Note != "" {
+		*ns = append(*ns, n.Note)
+		renderNoteMarker(c, noteTargetRect(r, n), len(*ns), n.Type == "button")
+	}
 }
 
-func renderChildrenAsVStack(c *canvas, r rect, children []*sketch.Node) {
-	renderChildrenAsVStackWithHeights(c, r, children, nil)
+func renderChildrenAsVStack(c *canvas, r rect, children []*sketch.Node, ns *notes) {
+	renderChildrenAsVStackWithHeights(c, r, children, nil, ns)
 }
 
-func renderChildrenAsVStackWithHeights(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot) {
+func renderChildrenAsVStackWithHeights(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot, ns *notes) {
 	if len(children) == 0 || r.w <= 0 || r.h <= 0 {
 		return
 	}
@@ -175,12 +222,20 @@ func renderChildrenAsVStackWithHeights(c *canvas, r rect, children []*sketch.Nod
 	y := r.y
 	for i, child := range children {
 		h := heights[i]
-		renderNode(c, rect{r.x, y, r.w, h}, child)
+		renderNode(c, rect{r.x, y, r.w, h}, child, ns)
 		y += h
 	}
 }
 
-func renderChildrenAsHStack(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot) {
+func renderChildrenAsHStack(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot, ns *notes) {
+	renderChildrenAsHStackWithMode(c, r, children, slots, false, ns)
+}
+
+func renderChildrenAsHStackFill(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot, ns *notes) {
+	renderChildrenAsHStackWithMode(c, r, children, slots, true, ns)
+}
+
+func renderChildrenAsHStackWithMode(c *canvas, r rect, children []*sketch.Node, slots []sketch.SizeSlot, fillRemainder bool, ns *notes) {
 	if len(children) == 0 || r.w <= 0 || r.h <= 0 {
 		return
 	}
@@ -188,11 +243,11 @@ func renderChildrenAsHStack(c *canvas, r rect, children []*sketch.Node, slots []
 	if len(children) == 1 {
 		gap = 0
 	}
-	widths := distributeHorizontal(max(1, r.w-gap*(len(children)-1)), children, slots)
+	widths := distributeHorizontal(max(1, r.w-gap*(len(children)-1)), children, slots, fillRemainder)
 	x := r.x
 	for i, child := range children {
 		w := widths[i]
-		renderNode(c, rect{x, r.y, w, r.h}, child)
+		renderNode(c, rect{x, r.y, w, r.h}, child, ns)
 		x += w + gap
 	}
 }
@@ -201,10 +256,11 @@ func renderSingleChild(c *canvas, r rect, n *sketch.Node) {
 	if len(n.Children) == 0 {
 		return
 	}
-	renderNode(c, r, n.Children[0])
+	var ns notes
+	renderNode(c, r, n.Children[0], &ns)
 }
 
-func renderGrid(c *canvas, r rect, n *sketch.Node) {
+func renderGrid(c *canvas, r rect, n *sketch.Node, ns *notes) {
 	children := n.Children
 	if len(children) == 0 {
 		return
@@ -221,11 +277,26 @@ func renderGrid(c *canvas, r rect, n *sketch.Node) {
 	for i, child := range children {
 		col := i % cols
 		row := i / cols
-		renderNode(c, rect{r.x + col*cellW, r.y + row*cellH, cellW, cellH}, child)
+		renderNode(c, rect{r.x + col*cellW, r.y + row*cellH, cellW, cellH}, child, ns)
 	}
 }
 
-func renderTabs(c *canvas, r rect, n *sketch.Node) {
+func renderSplitter(c *canvas, r rect, n *sketch.Node, ns *notes) {
+	if n.Orientation == "vertical" {
+		renderChildrenAsVStackWithHeights(c, r, n.Children, defaultSizes(n.Sizes), ns)
+		return
+	}
+	renderChildrenAsHStackFill(c, r, n.Children, defaultSizes(n.Sizes), ns)
+}
+
+func defaultSizes(slots []sketch.SizeSlot) []sketch.SizeSlot {
+	if len(slots) > 0 {
+		return slots
+	}
+	return []sketch.SizeSlot{{Percent: 25}, {Percent: 75}}
+}
+
+func renderTabs(c *canvas, r rect, n *sketch.Node, ns *notes) {
 	if r.h < 4 {
 		writeText(c, r.x, r.y, strings.Join(tabLabelTexts(n), " | "))
 		return
@@ -235,7 +306,7 @@ func renderTabs(c *canvas, r rect, n *sketch.Node) {
 	panel := rect{r.x, r.y + 2, r.w, r.h - 2}
 	drawBox(c, panel)
 	redrawTabsOverPanel(c, r, labels, active)
-	renderActiveTabBody(c, inset(panel, 1), n, active)
+	renderActiveTabBody(c, inset(panel, 1), n, active, ns)
 }
 
 func redrawTabsOverPanel(c *canvas, r rect, labels []sketch.TabLabel, active int) {
@@ -292,24 +363,55 @@ func drawTab(c *canvas, r rect, active, first bool) {
 }
 
 func renderButton(c *canvas, r rect, n *sketch.Node) {
+	box := buttonRect(r, n)
 	label := labelFor(n)
-	switch n.Type {
-	case "icon-button":
-		label = "◇ " + label
-	case "floating-action-button":
-		label = "+ " + label
-	case "badge-button":
-		if n.Badge != "" {
-			label += " " + n.Badge
-		}
-	case "toggle-button":
-		label = "☐ " + label
+	if box.h <= 1 {
+		writeText(c, box.x, box.y, "└─"+label+"─┘")
+		return
 	}
-	w := min(max(len([]rune(label))+4, minWidth), r.w)
-	h := min(3, r.h)
-	box := rect{r.x + max(0, r.w-w), r.y + max(0, r.h-h), w, h}
 	drawBox(c, box)
 	writeCentered(c, box.x+1, box.y+1, box.w-2, label)
+	if n.Badge != "" {
+		writeRight(c, box.x+box.w-1, box.y, "("+n.Badge+")")
+	}
+}
+
+func buttonRect(r rect, n *sketch.Node) rect {
+	label := labelFor(n)
+	w := min(max(len([]rune(label))+4, minWidth), r.w)
+	if n.Badge != "" {
+		w = min(max(w, len([]rune(label))+len([]rune(n.Badge))+6), r.w)
+	}
+	h := min(3, r.h)
+	return rect{r.x + max(0, r.w-w), r.y + max(0, r.h-h), w, h}
+}
+
+func noteTargetRect(r rect, n *sketch.Node) rect {
+	if n.Type == "button" {
+		return buttonRect(r, n)
+	}
+	return r
+}
+
+func renderNoteMarker(c *canvas, target rect, index int, outside bool) {
+	marker := "[" + intString(index) + "]"
+	y := target.y
+	markerLen := len([]rune(marker))
+	if !outside {
+		writeText(c, target.x, y, marker)
+		return
+	}
+	markerX := target.x + max(0, target.w-markerLen-10)
+	markerX = max(0, target.x-markerLen-8)
+	writeText(c, markerX, y, marker)
+	lineStart := markerX + markerLen
+	lineEnd := target.x + target.w - 1
+	if lineEnd > lineStart {
+		for x := lineStart; x < lineEnd; x++ {
+			put(c, x, y, '─')
+		}
+		put(c, lineEnd, y, '┐')
+	}
 }
 
 func renderInput(c *canvas, r rect, n *sketch.Node) {
@@ -317,6 +419,24 @@ func renderInput(c *canvas, r rect, n *sketch.Node) {
 	writeText(c, r.x, r.y, label)
 	if r.h >= 2 {
 		drawBox(c, rect{r.x, r.y + 1, min(r.w, max(12, len([]rune(label))+8)), 3})
+	}
+}
+
+func renderTextarea(c *canvas, r rect, n *sketch.Node) {
+	label := labelFor(n)
+	writeText(c, r.x, r.y, label)
+	if r.h >= 2 {
+		drawBox(c, rect{r.x, r.y + 1, min(r.w, max(16, len([]rune(label))+8)), min(5, max(3, r.h-1))})
+	}
+}
+
+func renderCombobox(c *canvas, r rect, n *sketch.Node) {
+	label := labelFor(n)
+	writeText(c, r.x, r.y, label)
+	if r.h >= 2 {
+		box := rect{r.x, r.y + 1, min(r.w, max(16, len([]rune(label))+8)), 3}
+		drawBox(c, box)
+		writeRight(c, box.x+box.w-2, box.y+1, "v")
 	}
 }
 
@@ -329,6 +449,17 @@ func renderTable(c *canvas, r rect, n *sketch.Node) {
 	writeText(c, r.x+2, r.y+1, strings.Join(n.Columns, " │ "))
 	if r.h > 3 {
 		drawHLine(c, r.x, r.y+2, r.w)
+	}
+}
+
+func renderImagePlaceholder(c *canvas, r rect, n *sketch.Node) {
+	drawBox(c, r)
+	writeCentered(c, r.x+1, r.y+r.h/2, r.w-2, labelFor(n))
+	if r.h >= 4 && r.w >= 8 {
+		put(c, r.x+2, r.y+1, '╲')
+		put(c, r.x+r.w-3, r.y+1, '╱')
+		put(c, r.x+2, r.y+r.h-2, '╱')
+		put(c, r.x+r.w-3, r.y+r.h-2, '╲')
 	}
 }
 
@@ -359,7 +490,7 @@ func distributeVertical(total int, children []*sketch.Node, slots []sketch.SizeS
 	return out
 }
 
-func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.SizeSlot) []int {
+func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.SizeSlot, fillRemainder bool) []int {
 	if proportional := distributeSlots(total, len(children), slots); len(proportional) > 0 {
 		return proportional
 	}
@@ -375,7 +506,7 @@ func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.Siz
 	if fixed > total {
 		return shrinkToFit(out, total)
 	}
-	if len(out) > 0 {
+	if fillRemainder && len(out) > 0 {
 		out[len(out)-1] += remaining
 	}
 	return out
@@ -490,22 +621,15 @@ func intrinsicWidth(n *sketch.Node) int {
 	switch n.Type {
 	case "spacer":
 		return 0
-	case "fixed-size":
-		return 18
 	case "button":
+		if n.Badge != "" {
+			return len([]rune(labelFor(n))) + len([]rune(n.Badge)) + 6
+		}
 		return len([]rune(labelFor(n))) + 4
-	case "icon-button":
-		return len([]rune(labelFor(n))) + 6
-	case "floating-action-button":
-		return len([]rune(labelFor(n))) + 6
-	case "badge-button":
-		return len([]rune(labelFor(n))) + len([]rune(n.Badge)) + 5
-	case "toggle-button":
-		return len([]rune(labelFor(n))) + 6
-	case "link":
-		return len([]rune(labelFor(n))) + 3
-	case "checkbox", "switch", "slider", "label", "hint", "note", "review", "badge":
+	case "checkbox", "radio", "toggle", "slider", "label", "badge":
 		return len([]rune(labelFor(n))) + 8
+	case "input", "textarea", "combobox":
+		return len([]rune(labelFor(n))) + 12
 	default:
 		return 24
 	}
@@ -515,25 +639,75 @@ func intrinsicHeight(n *sketch.Node) int {
 	switch n.Type {
 	case "spacer":
 		return 1
-	case "button", "icon-button", "floating-action-button", "badge-button", "toggle-button", "input":
+	case "button":
+		return 4
+	case "input", "combobox":
 		return 3
-	case "hstack", "menubar":
-		return 3
-	case "label", "hint", "note", "review", "checkbox", "switch", "slider", "badge", "link":
+	case "textarea":
+		return 5
+	case "hstack":
+		return max(4, maxChildHeight(n.Children))
+	case "vstack":
+		return childrenVStackHeight(n.Children)
+	case "label", "checkbox", "radio", "toggle", "slider", "badge":
 		return 1
 	case "table":
 		return 5
 	case "tabs":
-		return 12
-	case "grid", "table-layout":
+		return max(12, activeTabHeight(n)+4)
+	case "grid":
+		return gridHeight(n)
+	case "section":
+		return max(8, childrenVStackHeight(n.Children)+2)
+	case "list", "tree", "calendar", "image", "custom":
 		return 8
-	case "list", "tree", "calendar", "image", "custom-component", "sidebar", "section", "fixed-size":
-		return 8
-	case "split-pane":
-		return 12
+	case "splitter":
+		if n.Orientation == "vertical" {
+			return max(12, childrenVStackHeight(n.Children))
+		}
+		return max(12, maxChildHeight(n.Children))
 	default:
 		return 4
 	}
+}
+
+func childrenVStackHeight(children []*sketch.Node) int {
+	total := 0
+	for _, child := range children {
+		total += intrinsicHeight(child)
+	}
+	return total
+}
+
+func maxChildHeight(children []*sketch.Node) int {
+	maxHeight := 0
+	for _, child := range children {
+		maxHeight = max(maxHeight, intrinsicHeight(child))
+	}
+	return maxHeight
+}
+
+func gridHeight(n *sketch.Node) int {
+	if len(n.Children) == 0 {
+		return 8
+	}
+	cols := n.GridColumns
+	if cols <= 0 {
+		cols = 2
+	}
+	rows := (len(n.Children) + cols - 1) / cols
+	return max(8, rows*max(1, maxChildHeight(n.Children)))
+}
+
+func activeTabHeight(n *sketch.Node) int {
+	active := activeTabIndex(n.Labels)
+	if len(n.Labels) == 0 && len(n.Children) > active {
+		return intrinsicHeight(n.Children[active])
+	}
+	if len(n.Children) == 1 {
+		return intrinsicHeight(n.Children[0])
+	}
+	return childrenVStackHeight(n.Children)
 }
 
 func distribute(total int, parts int) []int {
@@ -555,7 +729,7 @@ func distribute(total int, parts int) []int {
 
 func isCompact(n *sketch.Node) bool {
 	switch n.Type {
-	case "menubar", "label", "hint", "note", "review", "checkbox", "switch", "slider", "badge", "link":
+	case "label", "checkbox", "radio", "toggle", "slider", "badge":
 		return true
 	case "hstack":
 		return true
@@ -564,12 +738,8 @@ func isCompact(n *sketch.Node) bool {
 	}
 }
 
-func childLabels(n *sketch.Node) []string {
-	var labels []string
-	for _, child := range n.Children {
-		labels = append(labels, labelFor(child))
-	}
-	return labels
+func intString(value int) string {
+	return strconv.Itoa(value)
 }
 
 func tabLabels(n *sketch.Node) []sketch.TabLabel {
@@ -601,16 +771,16 @@ func activeTabIndex(labels []sketch.TabLabel) int {
 	return 0
 }
 
-func renderActiveTabBody(c *canvas, r rect, n *sketch.Node, active int) {
+func renderActiveTabBody(c *canvas, r rect, n *sketch.Node, active int, ns *notes) {
 	if len(n.Labels) == 0 && len(n.Children) > active {
-		renderNode(c, r, n.Children[active])
+		renderNode(c, r, n.Children[active], ns)
 		return
 	}
 	if len(n.Children) == 1 {
-		renderNode(c, r, n.Children[0])
+		renderNode(c, r, n.Children[0], ns)
 		return
 	}
-	renderChildrenAsVStack(c, r, n.Children)
+	renderChildrenAsVStack(c, r, n.Children, ns)
 }
 
 func labelFor(n *sketch.Node) string {
@@ -713,6 +883,14 @@ func writeCentered(c *canvas, x, y, w int, s string) {
 
 func writeText(c *canvas, x, y int, s string) {
 	writeRunes(c, x, y, []rune(s))
+}
+
+func writeTextClipped(c *canvas, x, y, w int, s string) {
+	rs := []rune(s)
+	if len(rs) > w {
+		rs = rs[:max(0, w)]
+	}
+	writeRunes(c, x, y, rs)
 }
 
 func writeRight(c *canvas, rightX, y int, s string) {

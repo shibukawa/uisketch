@@ -12,6 +12,10 @@ title: Mobile Catalog
 mobile:
   id: mobile-catalog
   title: Catalog
+  menu:
+    - Home
+    - Search
+    - Settings
   children:
     - hstack:
         children:

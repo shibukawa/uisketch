@@ -81,9 +81,6 @@ func ValidateLayout(root *layout.Node, actions []string) []Finding {
 
 func validateNodeShape(n *layout.Node) []Finding {
 	var findings []Finding
-	if n.Type == "expanded" || n.Type == "fixed-size" {
-		findings = append(findings, Finding{Severity: Warning, Message: fmt.Sprintf("legacy sizing wrapper %q should be replaced with hstack.widths or vstack.heights", n.Type)})
-	}
 	if n.Type == "tabs" {
 		selected := 0
 		for _, label := range n.Labels {
@@ -117,6 +114,29 @@ func validateNodeShape(n *layout.Node) []Finding {
 			findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("heights is only valid on vstack, not %s", n.Type)})
 		}
 		findings = append(findings, validateStackSlots("heights", len(n.Children), n.Heights)...)
+	}
+	if len(n.Sizes) > 0 {
+		if n.Type != "splitter" {
+			findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("sizes is only valid on splitter, not %s", n.Type)})
+		}
+		findings = append(findings, validateStackSlots("sizes", len(n.Children), n.Sizes)...)
+		if len(n.Sizes) != 2 {
+			findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("splitter sizes length %d must be 2", len(n.Sizes))})
+		}
+	}
+	if n.Type == "splitter" {
+		if len(n.Children) != 2 {
+			findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("splitter children length %d must be 2", len(n.Children))})
+		}
+		if n.Orientation != "" && n.Orientation != "horizontal" && n.Orientation != "vertical" {
+			findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("splitter orientation %q must be horizontal or vertical", n.Orientation)})
+		}
+	}
+	if len(n.Menu) > 0 && (n.Type != "window" && n.Type != "mobile") {
+		findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("menu is only valid on window or mobile, not %s", n.Type)})
+	}
+	if len(n.Buttons) > 0 && n.Type != "dialog" {
+		findings = append(findings, Finding{Severity: Error, Message: fmt.Sprintf("buttons is only valid on dialog, not %s", n.Type)})
 	}
 	return findings
 }
@@ -202,11 +222,10 @@ func isRoot(t string) bool {
 func isSupported(t string) bool {
 	switch t {
 	case "browser", "window", "dialog", "menu", "mobile",
-		"vstack", "hstack", "grid", "table-layout", "split-pane", "tabs", "sidebar", "section", "menubar", "spacer",
-		"expanded", "fixed-size",
-		"button", "icon-button", "floating-action-button", "badge-button", "toggle-button", "link",
-		"label", "hint", "note", "review", "image", "custom-component",
-		"input", "checkbox", "switch", "slider",
+		"vstack", "hstack", "grid", "splitter", "tabs", "section", "spacer",
+		"button", "toggle",
+		"label", "image", "custom",
+		"input", "textarea", "combobox", "checkbox", "radio", "slider",
 		"table", "list", "tree", "calendar", "badge":
 		return true
 	default:

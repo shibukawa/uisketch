@@ -35,6 +35,7 @@ func TestValidateLayoutErrorsOnUnsupportedNode(t *testing.T) {
 func TestValidateLayoutAllowsMobileAndSpacer(t *testing.T) {
 	root := &layout.Node{
 		Type: "mobile",
+		Menu: []string{"Home", "Search"},
 		Children: []*layout.Node{{
 			Type: "hstack",
 			Children: []*layout.Node{
@@ -47,6 +48,21 @@ func TestValidateLayoutAllowsMobileAndSpacer(t *testing.T) {
 	findings := ValidateLayout(root, nil)
 	if HasErrors(findings) {
 		t.Fatalf("HasErrors = true, findings = %#v", findings)
+	}
+}
+
+func TestValidateLayoutRejectsMenuAndButtonsOnWrongNodes(t *testing.T) {
+	root := &layout.Node{
+		Type: "browser",
+		Menu: []string{"File"},
+		Children: []*layout.Node{{
+			Type:    "section",
+			Buttons: []*layout.Node{{Type: "button", Label: "OK"}},
+		}},
+	}
+	findings := ValidateLayout(root, nil)
+	if !HasErrors(findings) {
+		t.Fatalf("HasErrors = false, findings = %#v", findings)
 	}
 }
 
@@ -89,12 +105,21 @@ func TestValidateLayoutChecksTabsAndStackProportions(t *testing.T) {
 			},
 			Children: []*layout.Node{{Type: "label", Label: "Active"}},
 		}, {
-			Type:     "expanded",
-			Children: []*layout.Node{{Type: "label", Label: "Legacy"}},
+			Type:        "splitter",
+			Orientation: "diagonal",
+			Sizes: []layout.SizeSlot{
+				{Percent: 40},
+				{Percent: 40},
+				{Percent: 20},
+			},
+			Children: []*layout.Node{
+				{Type: "label", Label: "Left"},
+				{Type: "label", Label: "Right"},
+			},
 		}},
 	}
 	findings := ValidateLayout(root, nil)
-	var sawWidths, sawTabs, sawLegacy bool
+	var sawWidths, sawTabs, sawSplitterSizes, sawSplitterOrientation bool
 	for _, finding := range findings {
 		if finding.Message == "widths numeric percentages total 120; must not exceed 100 when * is present" {
 			sawWidths = true
@@ -102,12 +127,15 @@ func TestValidateLayoutChecksTabsAndStackProportions(t *testing.T) {
 		if finding.Message == "tabs labels must select exactly one label; found 2" {
 			sawTabs = true
 		}
-		if finding.Message == `legacy sizing wrapper "expanded" should be replaced with hstack.widths or vstack.heights` {
-			sawLegacy = true
+		if finding.Message == "sizes length 3 does not match children length 2; renderer will ignore mismatched sizing hints" {
+			sawSplitterSizes = true
+		}
+		if finding.Message == `splitter orientation "diagonal" must be horizontal or vertical` {
+			sawSplitterOrientation = true
 		}
 	}
-	if !sawWidths || !sawTabs || !sawLegacy {
-		t.Fatalf("findings = %#v, want widths, tabs, and legacy warnings/errors", findings)
+	if !sawWidths || !sawTabs || !sawSplitterSizes || !sawSplitterOrientation {
+		t.Fatalf("findings = %#v, want widths, tabs, and splitter warnings/errors", findings)
 	}
 }
 

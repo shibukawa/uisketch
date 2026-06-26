@@ -44,11 +44,47 @@ func TestRenderEquipmentList(t *testing.T) {
 		`class="nav-stroke"`,
 		`Refresh`,
 		`Create Alert`,
-		`Equipment | Status`,
+		`>Equipment</text>`,
+		`>Status</text>`,
 		`Ready`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("SVG output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestDistributeHorizontalLeavesRemainingSpaceWithoutSpacer(t *testing.T) {
+	children := []*sketch.Node{
+		{Type: "label", Label: "Screen title"},
+		{Type: "button", Label: "Primary action"},
+	}
+	got := distributeHorizontal(800, children, nil, false)
+	want := []int{192, 163}
+	if len(got) != len(want) {
+		t.Fatalf("width count = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("widths = %#v, want %#v", got, want)
+		}
+	}
+}
+
+func TestDistributeHorizontalSpacerAbsorbsRemainingSpace(t *testing.T) {
+	children := []*sketch.Node{
+		{Type: "label", Label: "Screen title"},
+		{Type: "spacer"},
+		{Type: "button", Label: "Primary action"},
+	}
+	got := distributeHorizontal(800, children, nil, false)
+	want := []int{192, 445, 163}
+	if len(got) != len(want) {
+		t.Fatalf("width count = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("widths = %#v, want %#v", got, want)
 		}
 	}
 }
@@ -74,5 +110,49 @@ func TestRenderWithOptions(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("SVG output does not contain %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestRenderButtonBadgeAndNoteCallout(t *testing.T) {
+	got := Render(&sketch.Document{Root: &sketch.Node{
+		Type: "window",
+		Children: []*sketch.Node{{
+			Type:  "button",
+			Label: "Inbox",
+			Badge: "1",
+			Note:  "Check notification count.",
+		}},
+	}})
+	for _, want := range []string{">1<", ">Check notification<", ">count.<", "note-connector", `fill:#fff2cc`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("SVG output does not contain %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderWrapsLongNoteCallout(t *testing.T) {
+	got := Render(&sketch.Document{Root: &sketch.Node{
+		Type: "window",
+		Children: []*sketch.Node{{
+			Type:  "label",
+			Label: "Status",
+			Note:  "This note is intentionally long so it should wrap inside the yellow callout instead of overflowing past the note box.",
+		}},
+	}})
+	for _, want := range []string{`height="136" rx="6" class="note"`, ">This note is<", ">intentionally long<", ">callout instead of<"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("SVG output does not contain wrapped note fragment %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderGrowsForLongForms(t *testing.T) {
+	var children []*sketch.Node
+	for i := 0; i < 12; i++ {
+		children = append(children, &sketch.Node{Type: "textarea", Label: "Field"})
+	}
+	got := Render(&sketch.Document{Root: &sketch.Node{Type: "window", Children: children}})
+	if !strings.Contains(got, `height="`) || strings.Contains(got, `height="640"`) {
+		t.Fatalf("SVG output did not grow beyond default height:\n%s", got)
 	}
 }

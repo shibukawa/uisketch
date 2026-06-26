@@ -144,6 +144,8 @@ export const useEditorStore = create((set, get) => ({
         [state.root.type]: {
           title: state.root.title,
           address: state.root.address,
+          menu: state.root.menu,
+          buttons: state.root.buttons,
         },
       };
       const cached = rootSurfaceCache[type] || {};
@@ -153,6 +155,10 @@ export const useEditorStore = create((set, get) => ({
       if (type !== "menu") root.title = cached.title || state.root.title || root.title;
       else delete root.title;
       if (type === "browser") root.address = cached.address || state.root.address || root.address;
+      if (type === "window" || type === "mobile") root.menu = structuredClone(cached.menu || state.root.menu || root.menu || []);
+      else delete root.menu;
+      if (type === "dialog") root.buttons = structuredClone(cached.buttons || state.root.buttons || root.buttons || []);
+      else delete root.buttons;
       return {
         ...withHistory(state),
         rootSurfaceCache,
@@ -224,6 +230,16 @@ export const useEditorStore = create((set, get) => ({
     set((state) => {
       if (!path.length) return state;
       const root = structuredClone(state.root);
+      if (path[0] === "buttons") {
+        const index = path[1];
+        if (!root.buttons || typeof index !== "number") return state;
+        root.buttons.splice(index, 1);
+        return {
+          ...withHistory(state),
+          root,
+          selectedPath: [],
+        };
+      }
       const parent = getNode(root, path.slice(0, -1));
       const index = path[path.length - 1];
       if (!parent?.children) return state;

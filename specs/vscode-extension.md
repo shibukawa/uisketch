@@ -192,7 +192,7 @@ In scope:
 - Run Go Wasm in the extension host for parser, validator, and renderer operations unless implementation findings prove a fallback is needed.
 - Recognize explicit `uisketch` source fences in `.uisketch.md` files.
 - Run validation diagnostics for malformed YAML and unknown component types.
-- Provide schema-backed completions for root components, `children`, `id`, `title`, `label`, `action`, `anchor`, `hint`, and `prompt`.
+- Provide schema-backed completions for root components, `children`, `id`, `title`, `label`, `action`, `anchor`, `hint`, `note`, and `prompt`.
 - Provide `Bake Markdown File` for SVG fences, writing image references, SVG assets, and `uisketch:source` comments.
 - Provide `Rebuild Baked Markdown File` for existing image-plus-comment pairs.
 

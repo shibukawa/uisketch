@@ -24,8 +24,8 @@ The UI DSL should provide a broad catalog of semantic UI components that covers 
 - Components are semantic building blocks for sketches and validation.
 - Component names should stay platform-neutral when the same concept appears across desktop, mobile, and web.
 - A `screen` is a concept type, not a layout component.
-- Platform-specific variants should be represented as hints or aliases, not unrelated component types.
-- Direction-specific names may be aliases when they improve readability, but the canonical model should keep `orientation: vertical|horizontal`.
+- Platform-specific variants should be represented as hints, not separate component types.
+- Direction should be represented with `orientation: vertical|horizontal` on components that support it.
 - Components should support label references through vocabulary entries.
 - Components should expose actions, inputs, data bindings, permissions, and state where relevant.
 - Components must not require color, typography, spacing, or pixel-perfect styling.
@@ -37,7 +37,6 @@ Each component definition should be able to declare:
 - Stable component type name.
 - Short purpose.
 - Supported platforms: `desktop`, `mobile`, `web`.
-- Common aliases.
 - Allowed child components.
 - Supported stack sizing properties.
 - Optional `id` for linking, editor selection, automation, and tests.
@@ -115,6 +114,20 @@ input:
 
 Renderers must not display `prompt` by default. Parsers and validators do not need to interpret the prompt text; they only need to recognize `prompt` as a supported key and validate that its value is a string. Structured, machine-readable metadata should continue to use `data`.
 
+## Shared Element Note
+
+Every component instance may include an optional `note` string. `note` is visible sketch annotation text used for design discussion, implementation reminders, or review comments. It is not product UI copy and must not change the component's semantic role, layout footprint, action, input behavior, or validation identity.
+
+Example:
+
+```yaml
+button:
+  label: Submit
+  note: Confirm with legal before implementation.
+```
+
+Renderers show `note` differently from product UI content. SVG uses pale yellow annotation callout boxes arranged to the right of the root surface when practical, with yellow connector lines to the noted elements. ASCII marks the noted element with a numbered marker such as `[1]`; labels may render it as a text prefix such as `[1]Label`, while boxed controls may merge the marker into the border when useful. ASCII also appends the note text below the rendered UI with the same marker. Tools may hide notes for presentation output when a note-free rendering mode is added.
+
 ## Shared Highlighting
 
 Every component instance may include an optional `highlight` field. `highlight` marks the element as important for review, walkthrough, or documentation without changing its semantic role.
@@ -141,15 +154,12 @@ Renderers should make highlighted elements stand out using low-fidelity sketch t
 | `hstack` | desktop, mobile, web | Children arranged horizontally. |
 | `spacer` | desktop, mobile, web | Invisible horizontal filler that consumes remaining `hstack` space. |
 | `grid` | desktop, mobile, web | Children arranged in rows and columns. |
-| `table-layout` | desktop, web | Non-data layout that aligns regions like a table. |
-| `split-pane` | desktop, web | Two-pane layout with `orientation`. Aliases: `vsplit-pane`, `hsplit-pane`. |
-| `sidebar` | desktop, web | Persistent side navigation or tool area. |
+| `splitter` | desktop, web | Two-pane layout with `orientation` and optional `sizes`. |
 | `section` | desktop, mobile, web | Named content section. |
-| `tabs` | desktop, mobile, web | Switchable content groups with `orientation`. Aliases: `vtabs`, `htabs`. |
+| `tabs` | desktop, mobile, web | Switchable content groups with `orientation`. |
 | `dialog` | desktop, mobile, web | Root surface for a modal or transient interaction state. |
 | `menu` | desktop, mobile, web | Command or navigation choices. May also be used as a root surface for contextual menus. |
-| `menubar` | desktop, web | Top-level application menu row, interpreted like an `hstack` of menu labels or menu items. |
-| `custom-component` | desktop, mobile, web | Project-defined component with explicit name and fallback rendering. |
+| `custom` | desktop, mobile, web | Project-defined component with explicit name and fallback rendering. |
 
 ## Arrangement Components
 
@@ -161,10 +171,9 @@ Arrangement components describe how child components are placed. They are intent
 | `hstack` | horizontal | Place children from left to right. |
 | `spacer` | horizontal filler | Consume remaining horizontal space inside an `hstack`. |
 | `grid` | rows and columns | Place children in a regular matrix. |
-| `table-layout` | rows and columns | Align named regions like a table without implying data rows. |
-| `split-pane` | vertical or horizontal split | Show two major regions separated by a conceptual divider. |
+| `splitter` | vertical or horizontal split | Show two major regions separated by a conceptual divider. |
 
-`layout` may remain as an internal parser or AST term, but author-facing DSL examples should prefer explicit arrangement components such as `vstack`, `hstack`, `grid`, and `table-layout`.
+`layout` may remain as an internal parser or AST term, but author-facing DSL examples should prefer explicit arrangement components such as `vstack`, `hstack`, `grid`, and `splitter`.
 
 Arrangement components may use coarse stack-level sizing properties from [UI Layout DSL](ui-layout-dsl.md): `hstack.widths` and `vstack.heights`. Content-based sizing is the default for ordinary controls and does not need a wrapper.
 
@@ -187,6 +196,8 @@ Parsers should also accept scalar `- spacer` in child lists as shorthand for `- 
 
 `grid` may include a numeric `columns` property. The default is `2` columns when omitted. `grid.columns` controls placement of child regions and must not be confused with `table.columns`, which names visible table fields.
 
+`splitter` may include a `sizes` array to assign proportional space to its two direct children. `sizes` uses the same entries as stack sizing: numbers are percentages and `$` means the remaining space. When omitted, renderers should use deterministic default proportions, normally a smaller leading pane and a larger trailing pane.
+
 Example:
 
 ```yaml
@@ -207,7 +218,7 @@ Example:
 hstack:
   widths: [20, $, $]
   children:
-    - sidebar:
+    - section:
         title: Navigation
     - table:
         id: primary-list
@@ -221,15 +232,6 @@ hstack:
 The catalog should avoid CSS-like pixel width, pixel height, margin, padding, and breakpoint controls.
 
 Generic framed containers should normally use `vstack`, `hstack`, or `section` instead of a vague `panel` component. A renderer may draw a boundary around any container when helpful, but that boundary is a rendering choice rather than a separate semantic component.
-
-Direction-specific shorthand is allowed when it keeps definitions readable:
-
-| Alias | Canonical Form |
-| --- | --- |
-| `vsplit-pane` | `split-pane` with `orientation: vertical` |
-| `hsplit-pane` | `split-pane` with `orientation: horizontal` |
-| `vtabs` | `tabs` with `orientation: vertical` |
-| `htabs` | `tabs` with `orientation: horizontal` |
 
 `tabs` represents one visible tab state, not a dynamic widget that renders every possible tab body at once. It must separate tab labels from the active tab content:
 
@@ -260,16 +262,17 @@ The selected `labels` item identifies which tab label is visibly active. The `ch
 Example:
 
 ```yaml
-split-pane:
+splitter:
   orientation: horizontal
+  sizes: [25, 75]
   children:
-    - sidebar:
+    - section:
         title: Filters
     - table:
         id: equipment-list
 ```
 
-In the concise `children` form, `split-pane` uses deterministic default proportions, typically a smaller leading pane and a larger trailing pane. Authors who need exact proportions should use `hstack.widths` or `vstack.heights`.
+When `splitter.sizes` is omitted, renderers use the default split ratio for the selected orientation.
 
 Example:
 
@@ -285,7 +288,7 @@ vstack:
     - hstack:
         widths: [25, 75]
         children:
-          - sidebar:
+          - section:
               title: Filters
           - table:
               id: equipment-list
@@ -293,7 +296,7 @@ vstack:
 
 ## Custom Components
 
-Projects may define components that are not in the baseline catalog by using `custom-component`.
+Projects may define components that are not in the baseline catalog by using `custom`.
 
 Custom components must include:
 
@@ -307,7 +310,7 @@ Custom components must include:
 Example:
 
 ```yaml
-custom-component:
+custom:
   name: equipment-health-map
   purpose: Shows equipment status by location.
   platforms: [desktop, web]
@@ -318,7 +321,7 @@ custom-component:
 
 Renderers should draw unsupported custom components as labeled boxes and emit a warning unless a project-local renderer mapping exists.
 
-By default, `custom-component` should render like an `image` placeholder: a filled rectangle with diagonal crossing lines and a label. Project-local renderer mappings may override this fallback.
+By default, `custom` should render like an `image` placeholder: a filled rectangle with diagonal crossing lines and a label. Project-local renderer mappings may override this fallback.
 
 ## Root Surface Components
 
@@ -338,11 +341,13 @@ Root surface components should use `children`, not `child`. A root surface's `ch
 
 `browser`, `window`, `mobile`, and `dialog` support a visible `title` property. The title should be rendered in the browser tab, window title bar, mobile chrome when useful, or dialog title bar. This property is distinct from `.uisketch.md` frontmatter `title`, which is document metadata.
 
+`window` and `mobile` support an optional `menu` property as root surface chrome. It is a list of visible string labels, not a child component list. `window.menu` is rendered as a fixed-height application menu bar at the top of the content area, below the title bar. `mobile.menu` is rendered as a fixed-height bottom navigation or command bar inside the device frame. A missing or empty `menu` property renders no bar.
+
 `mobile` should render as a rounded smartphone frame with a screen content region. It may show a top notch or speaker and a bottom home indicator. The frame is platform-neutral and should not imply a specific iOS or Android version.
 
-`dialog` also supports an optional `buttons` property for common bottom-right action rows. `buttons` is a list of ordinary child nodes, normally `button`, `badge-button`, or `link`, and is normalized as a bottom action row after the main `children` body.
+`dialog` also supports an optional `buttons` property for common bottom-right action rows. `buttons` is a list of ordinary child nodes, normally `button`, and is normalized as a bottom action row after the main `children` body.
 
-`alert`, `toast`, `banner`, `empty-state`, `error-state`, and `permission-denied-state` are not baseline components. These should be represented with text, ordinary layout, or a separate `dialog` root when they need their own sketch.
+Transient messages, empty/error states, and permission warnings should be represented with text, ordinary layout, or a separate `dialog` root when they need their own sketch.
 
 Example browser frame:
 
@@ -360,21 +365,9 @@ browser:
         id: equipment-list
 ```
 
-## Navigation Components
+## Navigation Behavior
 
-| Component | Platforms | Purpose |
-| --- | --- | --- |
-| `link` | web, desktop, mobile | Navigates to another view or resource. |
-
-`link` may include an optional `anchor` property that references another root UI definition ID or a fully resolved element ID. Button-like components may use the same property when pressing the control transitions to another page, window, or dialog.
-
-Example:
-
-```yaml
-link:
-  label: Admin
-  anchor: admin-page
-```
+Navigation is behavior on an interactive component, not a separate baseline component. Use `button` with an optional `anchor` when clicking or pressing the element navigates to another view, dialog, root UI definition, or resolved element ID. Use `label` only for non-interactive display text.
 
 ```yaml
 button:
@@ -387,11 +380,28 @@ button:
 
 | Component | Platforms | Purpose |
 | --- | --- | --- |
-| `button` | desktop, mobile, web | Executes an action. |
-| `icon-button` | desktop, mobile, web | Compact action, must expose accessible label. |
-| `floating-action-button` | mobile, web | Prominent primary action. |
-| `badge-button` | desktop, mobile, web | Button with a small count or status badge. |
-| `toggle-button` | desktop, mobile, web | Switches an action state. |
+| `button` | desktop, mobile, web | Executes an action or navigation. May include `badge`. |
+| `toggle` | desktop, mobile, web | Boolean on/off control. |
+
+`toggle` is the baseline component for on/off state.
+
+`button` is also the baseline for compact icon-like, floating, and badge-bearing actions. Authors may use a short text label, an emoji label, or an ordinary word label. When a button needs a small count or status indicator, set `badge` on the `button` instead of using a separate component type. Renderers and the visual editor should place the badge on the button's top-right border rather than appending it to the label text. If a badge shape is already drawn, the text inside it should be ordinary ASCII digits or authored text, not Unicode circled-number glyphs.
+
+Example badge button:
+
+```yaml
+button:
+  label: Notifications
+  badge: 3
+```
+
+Example compact emoji button:
+
+```yaml
+button:
+  label: 🔍
+  action: action.search
+```
 
 Stepper and segmented-control patterns should be represented with ordinary layout instead of dedicated components.
 
@@ -423,9 +433,6 @@ hstack:
 | Component | Platforms | Purpose |
 | --- | --- | --- |
 | `label` | desktop, mobile, web | Ordinary display text. May use literal text or a vocabulary reference. |
-| `hint` | desktop, mobile, web | Comment-like annotation for reviewers or implementers. |
-| `note` | desktop, mobile, web | Non-product annotation for design discussion or implementation notes. |
-| `review` | desktop, mobile, web | Review comment, open question, or decision prompt. |
 | `image` | desktop, mobile, web | Image placeholder. Does not embed or require an actual picture. |
 
 Example:
@@ -437,20 +444,6 @@ label: Ready
 ```yaml
 label:
   vocabulary: vocab.contract-holder
-```
-
-Example hint:
-
-```yaml
-hint: Confirm with legal before implementation.
-```
-
-Hints are not product UI copy. They are sketch annotations and should be visually secondary.
-
-Example review:
-
-```yaml
-review: Should this action require supervisor approval?
 ```
 
 Example image placeholder:
@@ -467,9 +460,14 @@ The renderer should draw `image` as a filled placeholder rather than showing a r
 | Component | Platforms | Purpose |
 | --- | --- | --- |
 | `input` | desktop, mobile, web | Generic input. Label or hint text may describe date, number, password, search, or other expected content. |
+| `textarea` | desktop, mobile, web | Multi-line free text input. |
+| `combobox` | desktop, mobile, web | Single choice from a closed or suggested option list. |
 | `checkbox` | desktop, mobile, web | Boolean or multi-select option. |
-| `switch` | mobile, web, desktop | Immediate on/off setting. |
+| `radio` | desktop, mobile, web | Single choice among visible mutually exclusive options. |
+| `toggle` | desktop, mobile, web | Immediate on/off setting. |
 | `slider` | desktop, mobile, web | Numeric range input. |
+
+`combobox` is the baseline semantic name for a combo box or closed-choice input.
 
 Input groups should be represented with ordinary layout components such as `vstack`, `hstack`, `label`, and `input` instead of dedicated `form` or `field` elements.
 
@@ -500,7 +498,7 @@ input:
   hint: date
 ```
 
-Radio-style choices should use `vstack` or `hstack` with `checkbox`, `button`, or plain labels when a sketch needs to show the options.
+Radio-style choices may use `radio` when the single-choice control itself matters. For sketches where each option needs rich layout or custom actions, use `vstack` or `hstack` with ordinary components instead.
 
 ## Data Display Components
 
@@ -512,7 +510,7 @@ Radio-style choices should use `vstack` or `hstack` with `checkbox`, `button`, o
 | `calendar` | desktop, mobile, web | Date-oriented events or availability. |
 | `badge` | desktop, mobile, web | Compact status or count indicator. |
 
-Metrics, charts, timelines, and avatar-like visuals should normally use `label`, `table`, `list`, `image`, or `custom-component` instead of dedicated baseline components.
+Metrics, charts, timelines, and avatar-like visuals should normally use `label`, `table`, `list`, `image`, or `custom` instead of dedicated baseline components.
 
 ## Platform-Specific Hints
 
@@ -546,27 +544,24 @@ The first implementation does not need to render every catalog component. It sho
 - `hstack`
 - `spacer`
 - `grid`
-- `table-layout`
-- `split-pane`
+- `splitter`
 - `tabs`
 - `dialog`
 - `menu`
-- `menubar`
 - `button`
-- `badge-button`
-- `link`
+- `toggle`
 - `label`
-- `hint`
-- `note`
-- `review`
 - `image`
 - `input`
+- `textarea`
+- `combobox`
 - `checkbox`
+- `radio`
 - `table`
 - `list`
-- `custom-component`
+- `custom`
 
-Unsupported catalog components should produce clear validation warnings and render as generic labeled boxes when possible.
+Unsupported component names should produce clear validation warnings and render as generic labeled boxes when possible.
 
 ## Related Documents
 
@@ -578,4 +573,4 @@ Unsupported catalog components should produce clear validation warnings and rend
 
 ## Native-Language Summary
 
-UI コンポーネントは、デスクトップ、モバイル、Web で共通して使える意味ベースの catalog として定義するが、要素数は最小に保つ。screen は Concept でありコンポーネントではない。ルート要素は window、browser、mobile、dialog、menu を基本とする。mobile はスマートフォン枠を持つ root surface として扱う。browser/window/mobile/dialog は描画される title 属性を持てる。dialog は buttons で下部右寄せのボタン列を表現できる。root id は任意だが参照時は推奨する。menu は通常メニューとコンテキストメニューを兼ねる。menubar は root ではなく、macOS の上部メニューのような横並びメニュー列として hstack 相当に扱う。動的な状態は 1 枚の絵に隠さず別ルート定義として表す。普通の表示テキストは label、注釈は hint/note/review で表す。実画像が必要ない画像領域と custom-component の既定 fallback は image プレースホルダーで表す。button、badge-button、link は anchor で遷移先 id を持てる。id と data はレンダリング結果のメタデータとして保持する。highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。配置は vstack、hstack、grid、table-layout のように明示する。grid は columns で列数を指定でき、省略時は 2 列である。入力は input に集約し、入力グループは form や field ではなく vstack/hstack と label/input で表す。データ表現は table を基本とし、data-grid や detail 系は持たない。toolbar は持たず、ボタン列は hstack または dialog.buttons で表現する。badge 付きのボタンは badge-button とする。CSS のような細かい制御は扱わない。独自部品は custom-component として定義する。
+UI コンポーネントは、デスクトップ、モバイル、Web で共通して使える意味ベースの catalog として定義するが、要素数は最小に保つ。screen は Concept でありコンポーネントではない。ルート要素は window、browser、mobile、dialog、menu を基本とする。mobile はスマートフォン枠を持つ root surface として扱う。browser/window/mobile/dialog は描画される title 属性を持てる。window と mobile は menu 属性で固定の chrome-level メニュー文字列を持て、window は上部、mobile は下部に描画する。dialog は buttons で下部右寄せのボタン列を表現できる。root id は任意だが参照時は推奨する。menu は通常メニューとコンテキストメニューを兼ねる。動的な状態は 1 枚の絵に隠さず別ルート定義として表す。普通の表示テキストは label、注釈は全コンポーネントに置ける note 属性で表す。note は製品 UI 文言ではなく、要素の意味、layout footprint、action、input behavior を変えない。実画像が必要ない画像領域と custom の既定 fallback は image プレースホルダーで表す。button は action と anchor で操作や遷移先 id を持てる。クリック可能な遷移は label ではなく button で表し、label は非インタラクティブな表示テキストに限定する。badge 付きの操作は button.badge で表す。button の label には短い文字列や絵文字を使える。toggle は on/off control の baseline component とする。combobox は閉じた選択肢または候補付き入力の baseline component とする。textarea と radio は baseline input component として扱う。id と data はレンダリング結果のメタデータとして保持する。prompt は非表示の AI 向け指示、note は表示される注釈、highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。配置は vstack、hstack、grid、splitter のように明示する。splitter は orientation と sizes で 2 pane の向きと比率を表す。grid は columns で列数を指定でき、省略時は 2 列である。入力グループは form や field ではなく vstack/hstack と label/input で表す。データ表現は table を基本とし、集計や詳細表示は既存の表示要素と layout で表す。toolbar は持たず、ボタン列は hstack または dialog.buttons で表現する。CSS のような細かい制御は扱わない。独自部品は custom として定義する。

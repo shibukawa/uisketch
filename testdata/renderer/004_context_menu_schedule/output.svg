@@ -12,6 +12,9 @@ svg{background:#fbfaf7;color:#1f2933;font-family:"Comic Sans MS","Bradley Hand",
 .muted{stroke:#9aa5b1}
 .chrome{fill:#f7f7f4}
 .accent{fill:#e8f2ff}
+.note{fill:#fff2cc;stroke:#d6b656}
+.note-connector{fill:none;stroke:#ffd966;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge-fill{fill:#fffdf8}
 .nav{fill:#1f2933;stroke:none}
 .nav-stroke{fill:none;stroke:#52606d;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
 .fill-only{stroke:none}

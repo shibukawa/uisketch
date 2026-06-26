@@ -2,8 +2,8 @@ import { canHaveChildren, fieldsFor, paletteGroups, rootSurfaceTypes } from "./c
 
 export const componentTypes = [...new Set([...rootSurfaceTypes, ...paletteGroups.flatMap((group) => group.items.map((item) => item.type))])].sort();
 
-export const commonProperties = ["children", "data", "prompt"];
-export const structuralProperties = ["columns", "labels", "widths", "heights"];
+export const commonProperties = ["children", "data", "note", "prompt"];
+export const structuralProperties = ["buttons", "columns", "labels", "widths", "heights", "sizes", "orientation", "options", "menu"];
 export const propertyTypes = [...new Set([...commonProperties, ...structuralProperties, ...componentTypes.flatMap((type) => fieldsFor({ type }))])].sort();
 export const sourceKeywords = [...new Set([...componentTypes, ...propertyTypes])].sort();
 
@@ -26,7 +26,8 @@ export function sourceSchemaFindings(source) {
     if (dataIndent != null && indent > dataIndent) return;
     if (dataIndent != null && indent <= dataIndent) dataIndent = null;
     while (stack.length && stack.at(-1).indent >= indent) stack.pop();
-    if (componentTypes.includes(key)) {
+    const owner = stack.at(-1)?.type;
+    if (componentTypes.includes(key) && !(owner && propertiesForComponent(owner).includes(key))) {
       stack.push({ indent, type: key });
       return;
     }
@@ -34,7 +35,6 @@ export function sourceSchemaFindings(source) {
       findings.push({ severity: "Warning", message: `Line ${index + 1}: unknown UI Layout DSL keyword "${key}"` });
       return;
     }
-    const owner = stack.at(-1)?.type;
     if (owner && !propertiesForComponent(owner).includes(key)) {
       findings.push({ severity: "Warning", message: `Line ${index + 1}: "${key}" is not a usual property for ${owner}` });
     }
@@ -46,12 +46,20 @@ export function sourceSchemaFindings(source) {
 export function propertiesForComponent(type) {
   const base = new Set(fieldsFor({ type }));
   base.add("data");
+  base.add("note");
   base.add("prompt");
   if (canHaveChildren({ type })) base.add("children");
+  if (type === "dialog") base.add("buttons");
+  if (type === "window" || type === "mobile") base.add("menu");
   if (type === "grid") base.add("columns");
   if (type === "tabs") base.add("labels");
   if (type === "hstack") base.add("widths");
   if (type === "vstack") base.add("heights");
+  if (type === "splitter") {
+    base.add("orientation");
+    base.add("sizes");
+  }
+  if (type === "combobox") base.add("options");
   return [...base].sort();
 }
 

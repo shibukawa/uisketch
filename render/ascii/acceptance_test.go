@@ -82,11 +82,12 @@ func TestRendererAcceptanceCases(t *testing.T) {
 
 var supportedAcceptanceComponents = []string{
 	"browser", "window", "dialog", "menu", "mobile",
-	"vstack", "hstack", "grid", "table-layout", "split-pane", "tabs", "sidebar", "section", "menubar", "spacer",
-	"button", "icon-button", "floating-action-button", "badge-button", "toggle-button", "link",
-	"label", "hint", "note", "review", "image", "custom-component",
-	"input", "checkbox", "switch", "slider",
+	"vstack", "hstack", "grid", "splitter", "tabs", "section", "spacer",
+	"button", "toggle",
+	"label", "image", "custom",
+	"input", "textarea", "combobox", "checkbox", "radio", "slider",
 	"table", "list", "tree", "calendar", "badge",
+	"window.menu", "mobile.menu", "dialog.buttons",
 }
 
 func collectComponentTypes(n *layout.Node, covered map[string]bool) {
@@ -94,6 +95,12 @@ func collectComponentTypes(n *layout.Node, covered map[string]bool) {
 		return
 	}
 	covered[n.Type] = true
+	if len(n.Menu) > 0 {
+		covered[n.Type+".menu"] = true
+	}
+	if n.Type == "dialog" && len(n.Buttons) > 0 {
+		covered["dialog.buttons"] = true
+	}
 	for _, child := range n.Children {
 		collectComponentTypes(child, covered)
 	}

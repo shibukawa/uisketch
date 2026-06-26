@@ -15,6 +15,10 @@ const (
 	defaultHeight = 640
 	minWidth      = 48
 	minHeight     = 24
+	noteBoxWidth  = 180
+	noteInnerPad  = 12
+	noteLineH     = 16
+	noteGap       = 16
 )
 
 type Options struct {
@@ -23,14 +27,21 @@ type Options struct {
 }
 
 type renderer struct {
-	buf      bytes.Buffer
-	width    int
-	height   int
-	roughSeq int
+	buf          bytes.Buffer
+	width        int
+	contentWidth int
+	height       int
+	roughSeq     int
+	notes        []noteCallout
 }
 
 type rect struct {
 	x, y, w, h int
+}
+
+type noteCallout struct {
+	text   string
+	anchor rect
 }
 
 type point struct {
@@ -69,11 +80,16 @@ func RenderWithOptions(doc *sketch.Document, opts Options) string {
 	}
 	h := opts.Height
 	if h <= 0 {
-		h = defaultHeight
+		h = max(defaultHeight, requiredRootHeight(doc.Root))
 	}
-	r := &renderer{width: w, height: h}
+	outputW := w
+	if noteCount(doc.Root) > 0 {
+		outputW += 220
+	}
+	r := &renderer{width: outputW, contentWidth: w, height: h}
 	r.start()
-	r.renderRoot(rect{16, 16, w - 32, h - 32}, doc)
+	r.renderRoot(rect{16, 16, r.contentWidth - 32, h - 32}, doc)
+	r.renderNotes()
 	r.end()
 	return r.buf.String()
 }
@@ -93,6 +109,9 @@ svg{background:#fbfaf7;color:#1f2933;font-family:"Comic Sans MS","Bradley Hand",
 .muted{stroke:#9aa5b1}
 .chrome{fill:#f7f7f4}
 .accent{fill:#e8f2ff}
+.note{fill:#fff2cc;stroke:#d6b656}
+.note-connector{fill:none;stroke:#ffd966;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge-fill{fill:#fffdf8}
 .nav{fill:#1f2933;stroke:none}
 .nav-stroke{fill:none;stroke:#52606d;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
 .fill-only{stroke:none}
@@ -133,7 +152,13 @@ func (r *renderer) renderRoot(bounds rect, doc *sketch.Document) {
 		r.renderWindowControls(bounds.x+bounds.w-84, bounds.y+24)
 		r.text(bounds.x+22, bounds.y+31, title, "text")
 		r.line(bounds.x, bounds.y+48, bounds.x+bounds.w, bounds.y+48, "line thin")
-		r.renderChildrenAsVStack(insetTop(bounds, 60, 16), root.Children)
+		content := insetTop(bounds, 60, 16)
+		if len(root.Menu) > 0 && content.h > 48 {
+			r.renderMenuBar(rect{bounds.x + 16, bounds.y + 56, bounds.w - 32, 34}, root.Menu)
+			content.y += 42
+			content.h -= 42
+		}
+		r.renderChildrenAsVStack(content, root.Children)
 	case "dialog":
 		r.circle(bounds.x+bounds.w-28, bounds.y+30, 11, "accent", "line")
 		r.text(bounds.x+18, bounds.y+31, title, "text")
@@ -167,7 +192,13 @@ func (r *renderer) renderMobileRoot(bounds rect, root *sketch.Node, title string
 		r.centeredText(phone.x+18, phone.y+54, phone.w-36, title, "text title")
 		contentTop = 76
 	}
-	r.renderChildrenAsVStack(rect{phone.x + 22, phone.y + contentTop, phone.w - 44, max(0, phone.h-contentTop-46)}, root.Children)
+	content := rect{phone.x + 22, phone.y + contentTop, phone.w - 44, max(0, phone.h-contentTop-46)}
+	if len(root.Menu) > 0 && content.h > 64 {
+		menu := rect{phone.x + 22, phone.y + phone.h - 70, phone.w - 44, 38}
+		r.renderMenuBar(menu, root.Menu)
+		content.h = max(0, menu.y-content.y-12)
+	}
+	r.renderChildrenAsVStack(content, root.Children)
 }
 
 func (r *renderer) renderWindowControls(x, y int) {
@@ -191,6 +222,21 @@ func (r *renderer) renderBrowserNavControls(x, centerY int) {
 		{float64(arrowX + 36), float64(centerY + 12)},
 	}, "nav")
 	r.reloadIcon(x+70, centerY+12, 12)
+}
+
+func (r *renderer) renderMenuBar(bounds rect, items []string) {
+	r.roundRect(bounds, 4, "chrome", "line thin muted")
+	if len(items) == 0 {
+		return
+	}
+	x := bounds.x + 14
+	for _, item := range items {
+		r.text(x, bounds.y+23, item, "text small")
+		x += textWidth(item) + 28
+		if x > bounds.x+bounds.w-20 {
+			break
+		}
+	}
 }
 
 func (r *renderer) reloadIcon(cx, cy, radius int) {
@@ -218,23 +264,15 @@ func (r *renderer) renderNode(bounds rect, n *sketch.Node) {
 		return
 	case "vstack":
 		r.renderChildrenAsVStackWithHeights(bounds, n.Children, n.Heights)
-	case "hstack", "menubar":
-		if n.Type == "menubar" {
-			r.text(bounds.x, bounds.y+20, strings.Join(childLabels(n), "     "), "text")
-			return
-		}
+	case "hstack":
 		r.renderChildrenAsHStack(bounds, n.Children, n.Widths)
-	case "expanded":
-		r.renderSingleChild(bounds, n)
-	case "fixed-size":
-		r.renderSingleChild(fixedRect(bounds), n)
-	case "grid", "table-layout":
+	case "grid":
 		r.renderGrid(bounds, n)
-	case "split-pane":
-		r.renderChildrenAsHStack(bounds, n.Children, nil)
+	case "splitter":
+		r.renderSplitter(bounds, n)
 	case "tabs":
 		r.renderTabs(bounds, n)
-	case "section", "sidebar":
+	case "section":
 		r.box(bounds, "fill")
 		label := labelFor(n)
 		labelW := min(bounds.w-24, textWidth(label)+28)
@@ -243,25 +281,23 @@ func (r *renderer) renderNode(bounds rect, n *sketch.Node) {
 			r.text(bounds.x+22, bounds.y+6, label, "text")
 		}
 		r.renderChildrenAsVStack(inset(bounds, 18), n.Children)
-	case "button", "icon-button", "floating-action-button", "badge-button", "toggle-button":
+	case "button":
 		r.renderButton(bounds, n)
-	case "link":
-		r.text(bounds.x, bounds.y+20, "<"+labelFor(n)+">", "text")
-		r.line(bounds.x, bounds.y+24, bounds.x+textWidth(labelFor(n))+20, bounds.y+24, "line thin")
 	case "label":
 		r.text(bounds.x, bounds.y+20, labelFor(n), "text")
-	case "hint":
-		r.text(bounds.x, bounds.y+20, "? "+labelFor(n), "text small")
-	case "note":
-		r.text(bounds.x, bounds.y+20, "Note: "+labelFor(n), "text small")
-	case "review":
-		r.text(bounds.x, bounds.y+20, "Review: "+labelFor(n), "text small")
 	case "input":
 		r.renderInput(bounds, n)
+	case "textarea":
+		r.renderTextarea(bounds, n)
+	case "combobox":
+		r.renderCombobox(bounds, n)
 	case "checkbox":
 		r.square(bounds.x, bounds.y+4, 18)
 		r.text(bounds.x+28, bounds.y+20, labelFor(n), "text")
-	case "switch":
+	case "radio":
+		r.circle(bounds.x+9, bounds.y+13, 9, "fill", "line")
+		r.text(bounds.x+28, bounds.y+20, labelFor(n), "text")
+	case "toggle":
 		r.roundRect(rect{bounds.x, bounds.y + 4, 48, 24}, 12, "soft", "line")
 		r.circle(bounds.x+14, bounds.y+16, 8, "fill", "line thin")
 		r.text(bounds.x+60, bounds.y+21, labelFor(n), "text")
@@ -281,14 +317,14 @@ func (r *renderer) renderNode(bounds rect, n *sketch.Node) {
 	case "badge":
 		r.roundRect(rect{bounds.x, bounds.y + 4, max(54, textWidth(labelFor(n))+22), 28}, 14, "soft", "line thin")
 		r.centeredText(bounds.x, bounds.y+23, max(54, textWidth(labelFor(n))+22), labelFor(n), "text small")
-	case "image", "custom-component":
-		r.box(bounds, "soft")
-		r.line(bounds.x+12, bounds.y+12, bounds.x+bounds.w-12, bounds.y+bounds.h-12, "line thin muted")
-		r.line(bounds.x+bounds.w-12, bounds.y+12, bounds.x+12, bounds.y+bounds.h-12, "line thin muted")
-		r.centeredText(bounds.x, bounds.y+bounds.h/2+5, bounds.w, labelFor(n), "text")
+	case "image", "custom":
+		r.renderImagePlaceholder(bounds, n)
 	default:
 		r.box(bounds, "fill")
 		r.centeredText(bounds.x, bounds.y+bounds.h/2+5, bounds.w, labelFor(n), "text")
+	}
+	if n.Note != "" {
+		r.notes = append(r.notes, noteCallout{text: n.Note, anchor: bounds})
 	}
 }
 
@@ -310,6 +346,14 @@ func (r *renderer) renderChildrenAsVStackWithHeights(bounds rect, children []*sk
 }
 
 func (r *renderer) renderChildrenAsHStack(bounds rect, children []*sketch.Node, slots []sketch.SizeSlot) {
+	r.renderChildrenAsHStackWithMode(bounds, children, slots, false)
+}
+
+func (r *renderer) renderChildrenAsHStackFill(bounds rect, children []*sketch.Node, slots []sketch.SizeSlot) {
+	r.renderChildrenAsHStackWithMode(bounds, children, slots, true)
+}
+
+func (r *renderer) renderChildrenAsHStackWithMode(bounds rect, children []*sketch.Node, slots []sketch.SizeSlot, fillRemainder bool) {
 	if len(children) == 0 || bounds.w <= 0 || bounds.h <= 0 {
 		return
 	}
@@ -317,7 +361,7 @@ func (r *renderer) renderChildrenAsHStack(bounds rect, children []*sketch.Node, 
 	if len(children) == 1 {
 		gap = 0
 	}
-	widths := distributeHorizontal(max(1, bounds.w-gap*(len(children)-1)), children, slots)
+	widths := distributeHorizontal(max(1, bounds.w-gap*(len(children)-1)), children, slots, fillRemainder)
 	x := bounds.x
 	for i, child := range children {
 		w := widths[i]
@@ -349,6 +393,21 @@ func (r *renderer) renderGrid(bounds rect, n *sketch.Node) {
 	for i, child := range children {
 		r.renderNode(rect{bounds.x + (i%cols)*cellW, bounds.y + (i/cols)*cellH, cellW - 8, cellH - 8}, child)
 	}
+}
+
+func (r *renderer) renderSplitter(bounds rect, n *sketch.Node) {
+	if n.Orientation == "vertical" {
+		r.renderChildrenAsVStackWithHeights(bounds, n.Children, defaultSizes(n.Sizes))
+		return
+	}
+	r.renderChildrenAsHStackFill(bounds, n.Children, defaultSizes(n.Sizes))
+}
+
+func defaultSizes(slots []sketch.SizeSlot) []sketch.SizeSlot {
+	if len(slots) > 0 {
+		return slots
+	}
+	return []sketch.SizeSlot{{Percent: 25}, {Percent: 75}}
 }
 
 func (r *renderer) renderTabs(bounds rect, n *sketch.Node) {
@@ -383,28 +442,39 @@ func (r *renderer) renderTabs(bounds rect, n *sketch.Node) {
 
 func (r *renderer) renderButton(bounds rect, n *sketch.Node) {
 	label := labelFor(n)
-	switch n.Type {
-	case "icon-button":
-		label = "* " + label
-	case "floating-action-button":
-		label = "+ " + label
-	case "badge-button":
-		if n.Badge != "" {
-			label += " " + n.Badge
-		}
-	case "toggle-button":
-		label = "[ ] " + label
-	}
 	w := min(max(textWidth(label)+34, minWidth), bounds.w)
+	if n.Badge != "" {
+		w = min(max(w, textWidth(label)+textWidth(n.Badge)+54), bounds.w)
+	}
 	h := min(40, max(minHeight, bounds.h))
 	box := rect{bounds.x + max(0, bounds.w-w), bounds.y + max(0, bounds.h-h)/2, w, h}
 	r.roundRect(box, 10, "button", "line")
 	r.centeredText(box.x, box.y+25, box.w, label, "text")
+	if n.Badge != "" {
+		r.renderBadgeMarker(box.x+box.w-9, box.y+1, n.Badge)
+	}
 }
 
 func (r *renderer) renderInput(bounds rect, n *sketch.Node) {
 	r.text(bounds.x, bounds.y+18, labelFor(n), "text")
 	r.roundRect(rect{bounds.x, bounds.y + 28, min(bounds.w, max(160, textWidth(labelFor(n))+80)), 38}, 8, "fill", "line")
+}
+
+func (r *renderer) renderTextarea(bounds rect, n *sketch.Node) {
+	r.text(bounds.x, bounds.y+18, labelFor(n), "text")
+	h := min(max(72, bounds.h-30), max(72, bounds.h))
+	r.roundRect(rect{bounds.x, bounds.y + 28, min(bounds.w, max(180, textWidth(labelFor(n))+80)), h}, 8, "fill", "line")
+}
+
+func (r *renderer) renderCombobox(bounds rect, n *sketch.Node) {
+	r.text(bounds.x, bounds.y+18, labelFor(n), "text")
+	box := rect{bounds.x, bounds.y + 28, min(bounds.w, max(160, textWidth(labelFor(n))+80)), 38}
+	r.roundRect(box, 8, "fill", "line")
+	r.solidPolygon([]point{
+		{float64(box.x + box.w - 28), float64(box.y + 16)},
+		{float64(box.x + box.w - 16), float64(box.y + 16)},
+		{float64(box.x + box.w - 22), float64(box.y + 24)},
+	}, "nav")
 }
 
 func (r *renderer) renderTable(bounds rect, n *sketch.Node) {
@@ -413,7 +483,14 @@ func (r *renderer) renderTable(bounds rect, n *sketch.Node) {
 		r.text(bounds.x+18, bounds.y+28, labelFor(n), "text")
 		return
 	}
-	r.text(bounds.x+18, bounds.y+28, strings.Join(n.Columns, " | "), "text")
+	colW := max(1, bounds.w/len(n.Columns))
+	for i, column := range n.Columns {
+		cellX := bounds.x + i*colW
+		if i > 0 {
+			r.line(cellX, bounds.y, cellX, bounds.y+bounds.h, "line thin")
+		}
+		r.text(cellX+18, bounds.y+28, column, "text")
+	}
 	r.line(bounds.x, bounds.y+42, bounds.x+bounds.w, bounds.y+42, "line thin")
 	for y := bounds.y + 76; y < bounds.y+bounds.h-16; y += 36 {
 		r.line(bounds.x+12, y, bounds.x+bounds.w-12, y+roughOffset(y), "line thin muted")
@@ -426,6 +503,38 @@ func (r *renderer) renderList(bounds rect, n *sketch.Node, kind string) {
 	for y := bounds.y + 58; y < bounds.y+bounds.h-16; y += 30 {
 		r.circle(bounds.x+24, y-4, 3, "soft", "line thin")
 		r.line(bounds.x+38, y-4, bounds.x+bounds.w-24, y+roughOffset(y), "line thin muted")
+	}
+}
+
+func (r *renderer) renderImagePlaceholder(bounds rect, n *sketch.Node) {
+	r.box(bounds, "soft")
+	r.line(bounds.x+12, bounds.y+12, bounds.x+bounds.w-12, bounds.y+bounds.h-12, "line thin muted")
+	r.line(bounds.x+bounds.w-12, bounds.y+12, bounds.x+12, bounds.y+bounds.h-12, "line thin muted")
+	r.centeredText(bounds.x, bounds.y+bounds.h/2+5, bounds.w, labelFor(n), "text")
+}
+
+func (r *renderer) renderBadgeMarker(cx, cy int, text string) {
+	r.circle(cx, cy, 12, "badge-fill", "line")
+	r.centeredText(cx-11, cy+5, 22, strings.TrimSpace(text), "text small")
+}
+
+func (r *renderer) renderNotes() {
+	if len(r.notes) == 0 {
+		return
+	}
+	x := r.contentWidth + 20
+	y := 24
+	w := min(noteBoxWidth, r.width-x-16)
+	for _, note := range r.notes {
+		lines := wrapText(note.text, max(1, w-noteInnerPad*2))
+		h := noteBoxHeight(lines)
+		box := rect{x, y, w, h}
+		anchorX := note.anchor.x + note.anchor.w
+		anchorY := note.anchor.y + max(0, min(note.anchor.h/2, 28))
+		r.line(anchorX, anchorY, box.x, box.y+box.h/2, "note-connector")
+		fmt.Fprintf(&r.buf, `<rect x="%d" y="%d" width="%d" height="%d" rx="6" class="note"/>`+"\n", box.x, box.y, box.w, box.h)
+		r.multilineText(box.x+noteInnerPad, box.y+22, box.w-noteInnerPad*2, lines, "text small")
+		y += h + noteGap
 	}
 }
 
@@ -498,6 +607,12 @@ func (r *renderer) centeredText(x, y, width int, value, class string) {
 	r.text(x+max(0, (width-textWidth(value))/2), y, value, class)
 }
 
+func (r *renderer) multilineText(x, y, width int, lines []string, class string) {
+	for i, line := range lines {
+		r.text(x+max(0, (width-textWidth(line))/2), y+i*noteLineH, line, class)
+	}
+}
+
 func distributeVertical(total int, children []*sketch.Node, slots []sketch.SizeSlot) []int {
 	if proportional := distributeSlots(total, len(children), slots); len(proportional) > 0 {
 		return proportional
@@ -517,7 +632,7 @@ func distributeVertical(total int, children []*sketch.Node, slots []sketch.SizeS
 	return out
 }
 
-func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.SizeSlot) []int {
+func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.SizeSlot, fillRemainder bool) []int {
 	if proportional := distributeSlots(total, len(children), slots); len(proportional) > 0 {
 		return proportional
 	}
@@ -533,7 +648,7 @@ func distributeHorizontal(total int, children []*sketch.Node, slots []sketch.Siz
 	if fixed > total {
 		return shrinkToFit(out, total)
 	}
-	if len(out) > 0 {
+	if fillRemainder && len(out) > 0 {
 		out[len(out)-1] += remaining
 	}
 	return out
@@ -648,18 +763,15 @@ func intrinsicWidth(n *sketch.Node) int {
 	switch n.Type {
 	case "spacer":
 		return 0
-	case "fixed-size":
-		return 220
 	case "button":
+		if n.Badge != "" {
+			return textWidth(labelFor(n)) + textWidth(n.Badge) + 60
+		}
 		return textWidth(labelFor(n)) + 44
-	case "icon-button", "floating-action-button", "toggle-button":
-		return textWidth(labelFor(n)) + 64
-	case "badge-button":
-		return textWidth(labelFor(n)) + textWidth(n.Badge) + 60
-	case "link":
-		return textWidth(labelFor(n)) + 32
-	case "checkbox", "switch", "slider", "label", "hint", "note", "review", "badge":
+	case "checkbox", "radio", "toggle", "slider", "label", "badge":
 		return textWidth(labelFor(n)) + 90
+	case "input", "textarea", "combobox":
+		return textWidth(labelFor(n)) + 120
 	default:
 		return 260
 	}
@@ -669,29 +781,147 @@ func intrinsicHeight(n *sketch.Node) int {
 	switch n.Type {
 	case "spacer":
 		return 1
-	case "button", "icon-button", "floating-action-button", "badge-button", "toggle-button":
+	case "button":
 		return 48
-	case "input":
+	case "input", "combobox":
 		return 82
-	case "hstack", "menubar":
-		return 52
-	case "label", "hint", "note", "review", "checkbox", "switch", "badge", "link":
+	case "textarea":
+		return 128
+	case "hstack":
+		return max(52, maxChildHeight(n.Children))
+	case "vstack":
+		return childrenVStackHeight(n.Children)
+	case "label", "checkbox", "radio", "toggle", "badge":
 		return 34
 	case "slider":
 		return 64
 	case "table":
 		return 132
 	case "tabs":
-		return 240
-	case "grid", "table-layout":
+		return max(240, activeTabHeight(n)+72)
+	case "grid":
+		return gridHeight(n)
+	case "section":
+		return max(180, childrenVStackHeight(n.Children)+36)
+	case "list", "tree", "calendar", "image", "custom":
 		return 180
-	case "list", "tree", "calendar", "image", "custom-component", "sidebar", "section", "fixed-size":
-		return 180
-	case "split-pane":
-		return 240
+	case "splitter":
+		if n.Orientation == "vertical" {
+			return max(240, childrenVStackHeight(n.Children))
+		}
+		return max(240, maxChildHeight(n.Children))
 	default:
 		return 96
 	}
+}
+
+func requiredRootHeight(root *sketch.Node) int {
+	content := childrenVStackHeight(root.Children)
+	notes := requiredNotesHeight(root)
+	var body int
+	switch root.Type {
+	case "browser":
+		body = content + 168
+	case "window":
+		menu := 0
+		if len(root.Menu) > 0 {
+			menu = 42
+		}
+		body = content + menu + 92
+	case "dialog", "menu":
+		body = content + 92
+	case "mobile":
+		menu := 0
+		if len(root.Menu) > 0 {
+			menu = 64
+		}
+		body = content + menu + 132
+	default:
+		body = intrinsicHeight(root) + 64
+	}
+	return max(body, notes)
+}
+
+func requiredNotesHeight(root *sketch.Node) int {
+	heights := noteHeights(root)
+	if len(heights) == 0 {
+		return 0
+	}
+	total := 48
+	for i, h := range heights {
+		total += h
+		if i < len(heights)-1 {
+			total += noteGap
+		}
+	}
+	return total
+}
+
+func noteHeights(n *sketch.Node) []int {
+	if n == nil {
+		return nil
+	}
+	var out []int
+	if n.Note != "" {
+		out = append(out, noteBoxHeight(wrapText(n.Note, noteBoxWidth-noteInnerPad*2)))
+	}
+	for _, child := range n.Children {
+		out = append(out, noteHeights(child)...)
+	}
+	return out
+}
+
+func childrenVStackHeight(children []*sketch.Node) int {
+	total := 0
+	for _, child := range children {
+		total += intrinsicHeight(child)
+	}
+	return total
+}
+
+func maxChildHeight(children []*sketch.Node) int {
+	maxHeight := 0
+	for _, child := range children {
+		maxHeight = max(maxHeight, intrinsicHeight(child))
+	}
+	return maxHeight
+}
+
+func gridHeight(n *sketch.Node) int {
+	if len(n.Children) == 0 {
+		return 180
+	}
+	cols := n.GridColumns
+	if cols <= 0 {
+		cols = 2
+	}
+	rows := (len(n.Children) + cols - 1) / cols
+	return max(180, rows*(max(1, maxChildHeight(n.Children))+8))
+}
+
+func activeTabHeight(n *sketch.Node) int {
+	active := activeTabIndex(n.Labels)
+	if len(n.Labels) == 0 && len(n.Children) > active {
+		return intrinsicHeight(n.Children[active])
+	}
+	if len(n.Children) == 1 {
+		return intrinsicHeight(n.Children[0])
+	}
+	return childrenVStackHeight(n.Children)
+}
+
+func noteCount(n *sketch.Node) int {
+	if n == nil {
+		return 0
+	}
+	count := 0
+	if n.Note != "" {
+		count++
+	}
+	for _, child := range n.Children {
+		count += noteCount(child)
+	}
+	return count
 }
 
 func fixedRect(bounds rect) rect {
@@ -704,14 +934,6 @@ func inset(bounds rect, amount int) rect {
 
 func insetTop(bounds rect, top, side int) rect {
 	return rect{bounds.x + side, bounds.y + top, max(0, bounds.w-side*2), max(0, bounds.h-top-side)}
-}
-
-func childLabels(n *sketch.Node) []string {
-	var labels []string
-	for _, child := range n.Children {
-		labels = append(labels, labelFor(child))
-	}
-	return labels
 }
 
 func tabLabels(n *sketch.Node) []sketch.TabLabel {
@@ -782,6 +1004,87 @@ func rootTitle(doc *sketch.Document) string {
 
 func textWidth(value string) int {
 	return int(math.Ceil(float64(len([]rune(value))) * 8.5))
+}
+
+func noteBoxHeight(lines []string) int {
+	return max(56, len(lines)*noteLineH+24)
+}
+
+func wrapText(value string, maxWidth int) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return []string{""}
+	}
+	var lines []string
+	for _, paragraph := range strings.Split(value, "\n") {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			lines = append(lines, "")
+			continue
+		}
+		lines = append(lines, wrapParagraph(paragraph, maxWidth)...)
+	}
+	return lines
+}
+
+func wrapParagraph(value string, maxWidth int) []string {
+	words := strings.Fields(value)
+	if len(words) <= 1 {
+		return splitRunesToWidth(value, maxWidth)
+	}
+	var lines []string
+	current := ""
+	for _, word := range words {
+		if current == "" {
+			if textWidth(word) > maxWidth {
+				chunks := splitRunesToWidth(word, maxWidth)
+				lines = append(lines, chunks[:max(0, len(chunks)-1)]...)
+				current = chunks[len(chunks)-1]
+			} else {
+				current = word
+			}
+			continue
+		}
+		next := current + " " + word
+		if textWidth(next) <= maxWidth {
+			current = next
+			continue
+		}
+		lines = append(lines, current)
+		if textWidth(word) > maxWidth {
+			chunks := splitRunesToWidth(word, maxWidth)
+			lines = append(lines, chunks[:max(0, len(chunks)-1)]...)
+			current = chunks[len(chunks)-1]
+		} else {
+			current = word
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func splitRunesToWidth(value string, maxWidth int) []string {
+	rs := []rune(value)
+	if len(rs) == 0 {
+		return []string{""}
+	}
+	var lines []string
+	var current []rune
+	for _, r := range rs {
+		next := append(append([]rune{}, current...), r)
+		if len(current) > 0 && textWidth(string(next)) > maxWidth {
+			lines = append(lines, string(current))
+			current = []rune{r}
+			continue
+		}
+		current = next
+	}
+	if len(current) > 0 {
+		lines = append(lines, string(current))
+	}
+	return lines
 }
 
 func roughOffset(seed int) int {

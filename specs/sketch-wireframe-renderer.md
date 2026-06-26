@@ -25,7 +25,7 @@ The renderer converts `uisketch` source files and embedded `uisketch` Markdown s
 - Ignore ordinary `yaml` fences and Markdown headings such as `## Layout` for render-source discovery.
 - Resolve layout nodes into a simple structural drawing model.
 - Resolve vocabulary-backed labels when a vocabulary provider is available.
-- Apply deterministic default spacing for root content, stack gaps, container insets, `spacer` expansion, and stack child proportions when explicit `hstack.widths` or `vstack.heights` do not control the result.
+- Apply deterministic default spacing for root content, stack gaps, container insets, `spacer` expansion, stack child proportions, and splitter proportions when explicit `hstack.widths`, `vstack.heights`, or `splitter.sizes` do not control the result.
 - Render the drawing model to SVG.
 - Render the drawing model to ASCII art.
 - Render all `uisketch` fenced code blocks in ordinary Markdown to Markdown image references or `text` blocks as defined in [Markdown Embedding Workflow](markdown-embedding-workflow.md).
@@ -41,8 +41,9 @@ SVG output should:
 - Use monochrome or near-monochrome strokes by default.
 - Use simple boxes, lines, and text.
 - Prefer draw.io-like sketch rendering over polished UI components.
-- Avoid color semantics unless explicitly needed for validation overlays in future versions.
+- Avoid color semantics except for note callouts and explicitly needed validation overlays in future versions.
 - Include stable element IDs where useful for testing.
+- Grow the output height when the authored layout needs more vertical space than the default canvas so later form fields and controls are not clipped or omitted.
 
 ## Sketch Style
 
@@ -59,11 +60,11 @@ Required style characteristics:
 Root surface chrome should follow the draw.io wireframe shapes used for browser, window, mobile, and dialog examples:
 
 - `browser` renders an outer window frame, a tab strip containing `browser.title`, top-right circular window controls, a toolbar row with back/forward/reload glyphs, and an address field containing `browser.address` when present.
-- `window` renders an outer frame, a title bar containing `window.title`, and top-right circular window controls.
-- `mobile` renders a tall rounded smartphone frame with a screen area, a top notch or speaker treatment, optional side buttons when practical, and a bottom home indicator or navigation bar. Its content must be inset inside the screen area.
+- `window` renders an outer frame, a title bar containing `window.title`, and top-right circular window controls. When `window.menu` is present, it renders a fixed-height top menu bar below the title bar and above the content region.
+- `mobile` renders a tall rounded smartphone frame with a screen area, a top notch or speaker treatment, optional side buttons when practical, and a bottom home indicator or navigation bar. Its content must be inset inside the screen area. When `mobile.menu` is present, it renders a fixed-height bottom bar inside the device frame below the content region.
 - `dialog` renders an outer frame, a title bar containing `dialog.title`, and a top-right circular close/control mark.
 - Browser, window, mobile, and dialog chrome should be visually distinct from the content area but remain monochrome or near-monochrome and deterministic.
-- Dialog `buttons` render as a bottom action row with buttons right-aligned below the main content body.
+- Dialog `buttons` render as a bottom action row with buttons right-aligned below the main content body. The row is dialog chrome/layout policy, not an ordinary `children` entry.
 
 Root titles are read from the root layout node, not from `.uisketch.md` frontmatter. Frontmatter title may be used only as a legacy migration fallback before a file is rewritten.
 
@@ -71,9 +72,51 @@ Tabbed containers must render the selected tab as connected to the content panel
 
 Image placeholders should not render real image content. The SVG renderer should draw an `image` component as a darker filled rectangle with diagonal lines connecting opposite corners. The ASCII renderer should draw a boxed placeholder with crossing diagonal marks when possible, or a labeled box when diagonal marks would reduce readability.
 
-`custom-component` should use the same fallback rendering as `image` unless a project-local renderer mapping exists.
+`custom` should use the same fallback rendering as `image` unless a project-local renderer mapping exists.
 
 Highlighted elements should stand out while remaining sketch-like. SVG may use a thicker rough outline, secondary callout stroke, or light emphasis fill. ASCII may use a stronger border or marker. Highlighting should not require color and must be deterministic.
+
+## Button And Table Rendering
+
+`button` is the only baseline button-like component. Renderers should draw ordinary, compact, emoji-labeled, badge-bearing, and navigation buttons with the same base button treatment.
+
+Button rendering rules:
+
+- The visible button text comes from `button.label`.
+- Emoji-only labels are valid. SVG and ASCII renderers must allocate enough intrinsic width and height that the emoji is not clipped or visually collapsed.
+- `button.badge` renders as a small count or status mark near the button's top-right corner. The badge is part of the button rendering, not a separate layout child. If a badge shape is already drawn, the text inside it should be ordinary ASCII digits or authored text, not Unicode circled-number glyphs.
+- `button.anchor` is metadata for navigation and must not render as visible text by default.
+
+SVG table rendering should include both horizontal row rules and vertical column rules so column boundaries are visually clear. ASCII table rendering may omit vertical detail when that would make the text output noisy, but it must preserve readable column labels and row separation.
+
+## Note Rendering
+
+Any element may carry a `note` string. Renderers should lay out the element exactly as if `note` were absent. The annotation is an overlay or appended explanation, not a separate layout child that consumes stack/grid space.
+
+SVG note rendering:
+
+- Draw the noted component normally at its layout position.
+- Draw note text in pale yellow callout boxes collected to the right of the root surface when practical.
+- Wrap note text within the callout box width. If the wrapped text needs more vertical space, grow the note box height rather than clipping or overflowing the text.
+- Draw a yellow connector line from the noted element bounds to the yellow callout box.
+- The callout and connector may extend outside the ordinary root surface bounds when needed, but the SVG viewBox must include the full note callout so it is not clipped.
+- SVG note callouts do not require an inline numbered marker when the connector line is sufficient to identify the target element.
+- The yellow callout is the one baseline exception to the renderer's mostly monochrome style; it is annotation chrome, not product UI color semantics.
+
+ASCII note rendering:
+
+- Render the noted component normally at its layout position.
+- Add a deterministic marker such as `[1]` at the noted element. Labels may prefix the visible text, for example `[1]Label`. Boxed controls may merge the marker into the top border when that improves legibility, but plain text elements must not get extra connector rules.
+- Append note text after the rendered UI, below the main ASCII art, one note per line.
+- Each appended line must start with the same marker used in the UI, followed by a space and the note text.
+- Numbering must follow deterministic source order in ASCII output. The first note is `[1]`, then `[2]`, and so on.
+
+Example appended ASCII notes:
+
+```text
+[1] 出力するテキスト
+[2] Confirm with legal before implementation.
+```
 
 The renderer must not depend on draw.io as a runtime or file-format dependency. draw.io is a visual reference for the default rendering style, not an input format or required output format.
 
@@ -84,13 +127,16 @@ The sketch effect should be deterministic for the same input, seed, and renderer
 ASCII output should:
 
 - Render screen areas, controls, and tables as full ASCII-art UI layouts using box-drawing characters where available.
-- Use layout structure such as `vstack`, `hstack`, `hstack.widths`, and `vstack.heights` to position controls instead of flattening every component into a text list.
+- Use layout structure such as `vstack`, `hstack`, `splitter`, `hstack.widths`, `vstack.heights`, and `splitter.sizes` to position controls instead of flattening every component into a text list.
 - Fit within a configurable width.
+- Grow vertically when the rendered UI needs more lines than the default output height.
 - Be deterministic for tests and documentation diffs.
 - Prefer readable labels over visual precision.
 - Be covered by golden acceptance tests defined in [Renderer Acceptance Tests](renderer-acceptance-tests.md).
 
-Renderers should resolve `hstack.widths` and `vstack.heights` before laying out direct children. Numeric entries reserve that percentage of the available stack axis. `$` entries divide the remaining size equally after numeric percentages. SVG and ASCII output should use the resolved proportions for child regions while still enforcing minimum readable sizes when a label or control would otherwise become unreadable.
+Renderers should resolve `hstack.widths`, `vstack.heights`, and `splitter.sizes` before laying out direct children. Numeric entries reserve that percentage of the available layout axis. `$` entries divide the remaining size equally after numeric percentages. SVG and ASCII output should use the resolved proportions for child regions while still enforcing minimum readable sizes when a label or control would otherwise become unreadable.
+
+For `splitter`, `orientation: horizontal` applies `sizes` as left-to-right widths and `orientation: vertical` applies `sizes` as top-to-bottom heights. When `sizes` is omitted, renderers should use deterministic default proportions, normally a smaller leading pane and a larger trailing pane.
 
 For `grid`, renderers should use `grid.columns` when present to determine the number of columns. The default is `2` columns when omitted. The row count is derived from the child count and selected column count, rounding up. Children are placed in row-major order.
 
@@ -210,4 +256,4 @@ The renderer API should support a stable preview mode that accepts the parsed la
 
 ## Native-Language Summary
 
-Renderer は `.uisketch.md` 内の UI DSL YAML ブロックや Markdown 内の `uisketch` fence から低忠実度のワイヤーフレームを生成する。CLI の render は screen concept ではなく `.uisketch.md` を直接入力にする。通常 Markdown を render 入力にする場合、埋め込み図が 1 つならそれを描画し、複数ある場合は 1-origin index で指定された N 個目の図を描画する。Markdown build/rebuild では文書内のすべての埋め込み図を処理する。SVG は draw.io の sketch 風を参考にしたラフな線で描画するが、draw.io 自体には依存しない。browser はタブ、アドレスバー、戻る/進む/更新、右上ボタンを描き、window はタイトルバーと右上ボタン、mobile はスマートフォン枠、ノッチ、ホームインジケータを描き、dialog はタイトルバーと右上ボタンを描く。描画タイトルは frontmatter ではなく root layout node の title を使う。ASCII は単なる行リストではなく、罫線文字を使った UI アートとして画面領域やボタン配置を表現し、`vstack`、`hstack`、`spacer`、`grid.columns`、`hstack.widths`、`vstack.heights` などの構造を位置決めに反映する。ASCII の水平 tabs はタブ列とコンテンツパネル上端を同じ seam row に描き、アクティブタブの下部は罫線ではなく空白にしてパネルへ開いているように見せ、非アクティブタブの下部はパネル上端へ接続する。hstack 内の spacer は見えない要素として残り幅を消費し、複数ある場合は按分する。grid は columns で列数を決め、省略時は 2 列で描画する。最初の出力先は SVG と ASCII で、将来の HTML、React、Markdown、PPTX 出力に備えて中間の sketch model を持つ。
+Renderer は `.uisketch.md` 内の UI DSL YAML ブロックや Markdown 内の `uisketch` fence から低忠実度のワイヤーフレームを生成する。CLI の render は screen concept ではなく `.uisketch.md` を直接入力にする。通常 Markdown を render 入力にする場合、埋め込み図が 1 つならそれを描画し、複数ある場合は 1-origin index で指定された N 個目の図を描画する。Markdown build/rebuild では文書内のすべての埋め込み図を処理する。SVG は draw.io の sketch 風を参考にしたラフな線で描画するが、draw.io 自体には依存しない。browser はタブ、アドレスバー、戻る/進む/更新、右上ボタンを描き、window はタイトルバーと右上ボタンを描く。window.menu があれば上部固定メニューバーを描く。mobile はスマートフォン枠、ノッチ、ホームインジケータを描き、mobile.menu があれば下部固定バーを描く。dialog はタイトルバーと右上ボタンを描き、buttons があれば下部右寄せの固定ボタン行を描く。描画タイトルは frontmatter ではなく root layout node の title を使う。button は唯一の button-like component として描き、絵文字 label を切り詰めず、button.badge は右上の小さな count/status mark として描く。SVG の table は横罫線だけでなく縦罫線も描き、ASCII は読みやすさを優先して過度にうるさくしない。note 属性を持つ要素は通常要素として描画し、SVG では root surface の右側に黄色い注釈ボックスを並べて対象要素との黄色い接続線を出し、note 文はボックス幅で折り返して必要ならボックスの縦幅を伸ばす。ASCII では対象要素に `[1]` などの番号を付け、label では `[1]Label` のようにテキストへ prefix し、レンダリング結果下部に同じ番号付きの注釈文を列挙する。ASCII は単なる行リストではなく、罫線文字を使った UI アートとして画面領域やボタン配置を表現し、`vstack`、`hstack`、`splitter`、`spacer`、`grid.columns`、`hstack.widths`、`vstack.heights`、`splitter.sizes` などの構造を位置決めに反映する。ASCII の水平 tabs はタブ列とコンテンツパネル上端を同じ seam row に描き、アクティブタブの下部は罫線ではなく空白にしてパネルへ開いているように見せ、非アクティブタブの下部はパネル上端へ接続する。hstack 内の spacer は見えない要素として残り横幅を消費し、複数ある場合は按分する。splitter は orientation で向きを決め、sizes があれば 2 pane の比率に反映する。grid は columns で列数を決め、省略時は 2 列で描画する。最初の出力先は SVG と ASCII で、将来の HTML、React、Markdown、PPTX 出力に備えて中間の sketch model を持つ。

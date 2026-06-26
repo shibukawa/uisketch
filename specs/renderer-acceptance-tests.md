@@ -66,10 +66,11 @@ Acceptance cases must cover every component in the supported renderer component 
 
 The initial renderer acceptance set should include these components:
 
-- Root and structural components: `browser`, `window`, `mobile`, `dialog`, `menu`, `menubar`, `vstack`, `hstack`, `grid`, `table-layout`, `split-pane`, `tabs`, `sidebar`, `section`.
-- Action and navigation components: `button`, `icon-button`, `floating-action-button`, `badge-button`, `toggle-button`, `link`.
-- Content and annotation components: `label`, `hint`, `note`, `review`, `image`, `custom-component`.
-- Input components: `input`, `checkbox`, `switch`, `slider`.
+- Root and structural components: `browser`, `window`, `mobile`, `dialog`, `menu`, `vstack`, `hstack`, `grid`, `splitter`, `tabs`, `section`.
+- Root chrome and action-row attributes: `window.menu`, `mobile.menu`, and `dialog.buttons`.
+- Action and navigation components: `button`, `button.badge`, `button.anchor`, emoji-labeled `button`, and `toggle`.
+- Content components and annotation attributes: `label`, `image`, `custom`, and `note` on at least one visible component.
+- Input components: `input`, `textarea`, `combobox`, `checkbox`, `radio`, `slider`.
 - Data display components: `table`, `list`, `tree`, `calendar`, `badge`.
 
 When a new component becomes part of the supported renderer set, the acceptance tests must add or update at least one case that exercises it before the implementation is considered complete.

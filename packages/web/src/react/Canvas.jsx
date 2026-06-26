@@ -21,10 +21,11 @@ function CanvasNode({ node, path, parentType = "" }) {
   const selected = samePath(path, selectedPath);
   const layout = layoutTypes.has(node.type);
   const root = path.length === 0;
+  const dialogButton = path[0] === "buttons";
 
   return (
     <article
-      draggable={!root}
+      draggable={!root && !dialogButton}
       className={`node-card node-${node.type} ${containerTypes.has(node.type) ? "container" : "leaf"} ${layout ? "node-layout" : "node-component"} ${selected ? "node-selected" : ""}`}
       onClick={(event) => {
         event.stopPropagation();
@@ -54,12 +55,17 @@ function CanvasNode({ node, path, parentType = "" }) {
       )}
       {node.type === "browser" && <BrowserChrome address={node.address || "https://example.test"} />}
       {node.type === "window" && <WindowChrome title={node.title || "Window"} />}
+      {node.type === "window" && node.menu?.length > 0 && <SurfaceMenu items={node.menu} position="top" />}
       {node.type === "mobile" && <ChromeLine>Mobile viewport</ChromeLine>}
       {node.type === "dialog" && <DialogChrome title={node.title || "Dialog"} />}
       {node.type === "section" && node.title && <SectionLegend>{node.title}</SectionLegend>}
       {node.type === "tabs" && <TabsStrip node={node} />}
+      {node.badge && <span className="node-badge" title={`Badge ${node.badge}`}>{badgeText(node.badge)}</span>}
+      {node.note && <span className="node-note" title={node.note}>note</span>}
       {leafTypes.has(node.type) && <LeafBody node={node} parentType={parentType} />}
       {canHaveChildren(node) && <Children node={node} path={path} />}
+      {node.type === "dialog" && <DialogButtons node={node} />}
+      {node.type === "mobile" && node.menu?.length > 0 && <SurfaceMenu items={node.menu} position="bottom" />}
     </article>
   );
 }
@@ -100,6 +106,28 @@ function DialogChrome({ title }) {
   );
 }
 
+function SurfaceMenu({ items, position }) {
+  return (
+    <nav className={`surface-menu surface-menu-${position}`}>
+      {items.map((item, index) => (
+        <span key={`${item}-${index}`}>{item}</span>
+      ))}
+    </nav>
+  );
+}
+
+function DialogButtons({ node }) {
+  const buttons = node.buttons || [];
+  if (!buttons.length) return null;
+  return (
+    <div className="dialog-buttons-row">
+      {buttons.map((button, index) => (
+        <CanvasNode key={index} node={button} path={["buttons", index]} parentType="dialog-buttons" />
+      ))}
+    </div>
+  );
+}
+
 function WindowButtons({ count }) {
   return (
     <div className="chrome-controls">
@@ -108,6 +136,10 @@ function WindowButtons({ count }) {
       ))}
     </div>
   );
+}
+
+function badgeText(value) {
+  return String(value).trim();
 }
 
 function SectionLegend({ children }) {
@@ -147,7 +179,7 @@ function LeafBody({ node, parentType }) {
       </label>
     );
   }
-  if (node.type === "select") {
+  if (node.type === "combobox") {
     return (
       <label className="sketch-field">
         {node.label && <span className="text-sm font-medium">{node.label}</span>}
@@ -159,9 +191,14 @@ function LeafBody({ node, parentType }) {
       </label>
     );
   }
+  if (node.type === "slider") return <label className="sketch-field"><span className="text-sm font-medium">{leafText(node)}</span><input type="range" className="range range-sm" readOnly /></label>;
   if (node.type === "table") return <TableBody node={node} />;
   if (node.type === "image") return <div className="image-placeholder m-3 grid min-h-20 place-items-center rounded-btn border border-dashed border-base-300 text-base-content/45">{leafText(node)}</div>;
+  if (node.type === "custom") return <div className="image-placeholder m-3 grid min-h-20 place-items-center rounded-btn border border-dashed border-base-300 text-base-content/45">{leafText(node)}</div>;
   if (node.type === "list") return <ul className="m-3 list-disc pl-6 text-sm"><li>{leafText(node)}</li></ul>;
+  if (node.type === "tree") return <ul className="m-3 list-disc pl-6 text-sm"><li>{leafText(node)}</li><li className="ml-4 text-base-content/50">Child</li></ul>;
+  if (node.type === "calendar") return <div className="m-3 grid grid-cols-7 gap-1 text-center text-xs text-base-content/60">{Array.from({ length: 14 }).map((_, index) => <span key={index} className="rounded border border-base-300 py-1">{index + 1}</span>)}</div>;
+  if (node.type === "badge") return <span className="badge badge-outline m-3">{leafText(node)}</span>;
   if (node.type === "spacer") return <SpacerBody direction={parentType === "vstack" ? "vertical" : "horizontal"} />;
   return <div className="p-3 text-base-content">{leafText(node)}</div>;
 }
@@ -203,9 +240,18 @@ function TableBody({ node }) {
 }
 
 function Children({ node, path }) {
-  const style = node.type === "grid" ? { gridTemplateColumns: `repeat(${Number(node.columns) || 2}, minmax(0, 1fr))` } : undefined;
+  const style = childStyle(node);
   const empty = !node.children?.length;
   const hasSpacer = Boolean(node.children?.some((child) => child.type === "spacer"));
+  if (node.type === "splitter") {
+    return (
+      <div className={`children children-${node.type} ${empty ? "children-empty" : ""}`} style={style}>
+        {(node.children || []).map((child, index) => (
+          <CanvasNode key={index} node={child} path={[...path, index]} parentType={node.type} />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className={`children children-${node.type} ${empty ? "children-empty" : ""} ${hasSpacer ? "children-has-spacer" : ""}`} style={style}>
       <DropZone parentPath={path} index={0} tail={empty} />
@@ -217,6 +263,16 @@ function Children({ node, path }) {
       ))}
     </div>
   );
+}
+
+function childStyle(node) {
+  if (node.type === "grid") return { gridTemplateColumns: `repeat(${Number(node.columns) || 2}, minmax(0, 1fr))` };
+  if (node.type === "splitter") {
+    const sizes = Array.isArray(node.sizes) && node.sizes.length === 2 ? node.sizes : [25, 75];
+    const tracks = sizes.map((size) => (size === "$" || size === "*" ? "1fr" : `${Number(size) || 50}fr`)).join(" ");
+    return node.orientation === "vertical" ? { gridTemplateRows: tracks } : { gridTemplateColumns: tracks };
+  }
+  return undefined;
 }
 
 function DropZone({ parentPath, index, tail, fixedTail = false }) {

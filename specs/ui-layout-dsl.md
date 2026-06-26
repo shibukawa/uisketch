@@ -101,13 +101,13 @@ image: ラベル
 
 The shorthand is intended for label-bearing components that do not need nested `children`, `buttons`, `columns`, `labels`, sizing slots, metadata, or action/navigation fields at that location. It should be accepted for ordinary text-like, control-like, and placeholder-like leaf nodes including:
 
-- `button`, `icon-button`, `floating-action-button`, `toggle-button`, and `link`.
-- `label`, `hint`, `note`, `review`, and `badge`.
-- `input`, `checkbox`, `switch`, and `slider`.
-- `image` and `custom-component`.
+- `button` and `toggle`.
+- `label` and `badge`.
+- `input`, `textarea`, `combobox`, `checkbox`, `radio`, and `slider`.
+- `image` and `custom`.
 - `list`, `tree`, and `calendar` when the source only needs a visible placeholder label.
 
-When a component needs any additional property such as `id`, `action`, `anchor`, `badge`, `columns`, `children`, `highlight`, or `data`, authors must use the mapping form:
+When a component needs any additional property such as `id`, `action`, `anchor`, `badge`, `columns`, `children`, `note`, `highlight`, or `data`, authors must use the mapping form:
 
 ```yaml
 button:
@@ -120,7 +120,7 @@ Parsers must treat scalar shorthand as syntactic sugar only; it must not create 
 
 Inside `children`, a label-bearing leaf component may also be written as a bare component name when it has no properties at all. For example, `- image` is equivalent to `- image:` and `- tree` is equivalent to `- tree:`. This is useful for placeholder-heavy grids and inspector sections where the component type alone is enough.
 
-Container and root components such as `browser`, `window`, `mobile`, `dialog`, `menu`, `vstack`, `hstack`, `grid`, `table-layout`, `split-pane`, `tabs`, `sidebar`, `section`, and `menubar` should not use scalar label shorthand because their value is normally a structured object or child hierarchy. `table` should continue to use mapping form when it declares `columns`; a scalar `table: Orders` is only a placeholder label and does not define data columns.
+Container and root components such as `browser`, `window`, `mobile`, `dialog`, `menu`, `vstack`, `hstack`, `grid`, `splitter`, `tabs`, and `section` should not use scalar label shorthand because their value is normally a structured object or child hierarchy. `table` should continue to use mapping form when it declares `columns`; a scalar `table: Orders` is only a placeholder label and does not define data columns.
 
 ## Core Layout Nodes
 
@@ -133,29 +133,49 @@ The canonical component vocabulary is defined in [UI Component Catalog](ui-compo
 | `mobile` | Smartphone device frame. |
 | `dialog` | Modal or transient interaction root. |
 | `menu` | Command, navigation, or contextual menu root. |
-| `menubar` | Desktop-style application menu row, interpreted like `hstack`. |
 | `vstack` | Arrange children vertically. |
 | `hstack` | Arrange children horizontally. |
 | `spacer` | Consume remaining horizontal space inside an `hstack`. |
 | `grid` | Arrange children in rows and columns. |
-| `table-layout` | Align non-data regions like a table. |
-| `split-pane` | Arrange two regions with vertical or horizontal orientation. |
+| `splitter` | Arrange two regions with vertical or horizontal orientation and optional `sizes`. |
 | `tabs` | Switch content groups with vertical or horizontal tab placement. |
-| `custom-component` | Project-defined component with fallback rendering. |
-| `button` or `action` | User-triggered operation. |
-| `badge-button` | Button with a small count or status badge. |
+| `custom` | Project-defined component with fallback rendering. |
+| `button` | User-triggered operation. |
+| `toggle` | Boolean on/off control. |
 | `input` | Generic input whose label or hint describes expected content. |
+| `textarea` | Multi-line free text input. |
+| `combobox` | Single choice from a closed or suggested option list. |
+| `checkbox` | Boolean or multi-select option. |
+| `radio` | Single choice among visible mutually exclusive options. |
 | `image` | Image placeholder drawn without embedding a real picture. |
 | `table` | Tabular collection. |
 | `list` | Repeated collection. |
 | `label` | Text label, preferably vocabulary-backed. |
-| `hint` | Comment-like sketch annotation. |
-| `note` | Non-product annotation for design discussion or implementation notes. |
-| `review` | Review comment or open question tied to the sketch. |
 
 Root nodes such as `window`, `browser`, `mobile`, `dialog`, and `menu` should use `children`. Their `children` list is interpreted as an implicit `vstack`.
 
 `browser`, `window`, `mobile`, and `dialog` may include a `title` field. This field is visible UI chrome and should be rendered in the browser tab, window title bar, mobile chrome when useful, or dialog title bar. A `.uisketch.md` frontmatter `title` is document metadata and must not be treated as the visible surface title except as a legacy migration fallback.
+
+`window` and `mobile` may include an optional `menu` property for fixed chrome-level command or navigation labels. `menu` is a list of strings, not a child layout node and not a component type. `window.menu` renders as a fixed-height top bar below the window title bar and above content. `mobile.menu` renders as a fixed-height bottom bar below content and inside the device frame. When `menu` is absent or empty, no menu bar is drawn and the content region uses the space normally reserved for that bar.
+
+Examples:
+
+```yaml
+window:
+  title: UI Sketch Editor
+  menu: [File, Edit, View]
+  children:
+    - section:
+        title: Main content
+```
+
+```yaml
+mobile:
+  title: Catalog
+  menu: [Home, Search, Settings]
+  children:
+    - list: Items
+```
 
 ## Mobile Root
 
@@ -252,7 +272,7 @@ Within a root element, resolved child IDs must be unique when present. IDs are f
 
 ## Navigation Targets
 
-Elements that can trigger navigation, especially `link`, `button`, `badge-button`, and other button-like controls, may include an optional `anchor` field.
+Elements that can trigger navigation, especially `button` and other button-like controls, may include an optional `anchor` field. A clickable navigation element should be authored as `button`; `label` is reserved for non-interactive display text.
 
 `anchor` references another UI definition by root ID, or a fully resolved element ID when a transition targets a specific element:
 
@@ -263,27 +283,31 @@ button:
   anchor: alert-create-dialog
 ```
 
-```yaml
-link:
-  label: Equipment Detail
-  anchor: equipment-detail.main-table
-```
-
 The `anchor` field supports editor walkthroughs, clickable previews, and flow validation. It is optional and should not be rendered as visible text by default.
 
 The legacy `to` field may be accepted when reading older files, but new or rewritten files should use `anchor`.
 
-## Notes And Reviews
+## Element Notes
 
-`hint`, `note`, and `review` are annotation elements, not product UI copy.
+Every layout element may include an optional `note` string. `note` is visible sketch annotation text, not product UI copy. It attaches annotation text to the element that owns the property without changing that element's semantic role.
 
-| Element | Purpose |
-| --- | --- |
-| `hint` | Short inline guidance or clarification. |
-| `note` | Longer implementation or design note. |
-| `review` | Review comment, open question, or decision prompt. |
+Authoring shape:
 
-Renderers may show these annotations in sketch output using visually secondary styling. Tools may also hide them for presentation output.
+```yaml
+button:
+  label: ボタン
+  note: 出力するテキスト
+```
+
+Rules:
+
+- `note` is optional and must be a non-empty string when present.
+- `note` belongs to the component instance that declares it; it is not a component type and does not wrap another node.
+- `note` must not determine layout footprint, child placement, action behavior, input behavior, or validation identity.
+- Tools should expose `note` alongside other shared element properties such as `id`, `data`, `prompt`, and `highlight`.
+- Use `label` or another visible component for text that is part of the product UI.
+
+Renderers must show `note` annotations differently from product UI content. Tools may also hide notes for presentation output when a note-free rendering mode is added.
 
 ## Highlighting
 
@@ -407,7 +431,7 @@ Examples:
 hstack:
   widths: [20, 30, 50]
   children:
-    - sidebar:
+    - section:
         title: Filters
     - list:
         id: equipment-list
@@ -461,29 +485,37 @@ Rules:
 - `grid.columns` is a coarse sketch layout hint, not a responsive breakpoint or CSS grid definition.
 - `grid.columns` is distinct from `table.columns`, which is a list of visible table column labels.
 
-Legacy `expanded` and `fixed-size` wrapper nodes are not part of the preferred DSL. Parsers may accept them only to migrate older files. New or rewritten files should replace them with `hstack.widths`, `vstack.heights`, or ordinary content-based stack layout.
+## Splitter
 
-`split-pane` may use `children` as a concise authoring form instead of `start` and `end`. When a `split-pane.children` list has no explicit proportions, renderers should allocate a smaller leading pane and a larger trailing pane by default. Authors who need explicit ratios should use `hstack` or `vstack` with `widths` or `heights`, or a future `split-pane` proportion property if one is added.
+`splitter` represents a two-pane split layout. It should have exactly two direct `children`.
+
+`splitter.orientation` controls the split direction:
+
+- `horizontal` places panes left and right.
+- `vertical` places panes top and bottom.
+
+`splitter.sizes` is optional and assigns proportional space to the two panes in child order. It uses the same value rules as `hstack.widths` and `vstack.heights`: numeric entries are percentages, and `$` means the remaining space after numeric percentages. When `sizes` is omitted, renderers should allocate a smaller leading pane and a larger trailing pane by default.
 
 Example:
 
 ```yaml
-split-pane:
+splitter:
   orientation: horizontal
+  sizes: [25, 75]
   children:
-    - sidebar:
+    - section:
         title: Filters
     - table:
         id: equipment-list
 ```
 
-Equivalent proportional structure when authored as a stack:
+The equivalent proportional structure when authored as a stack would be:
 
 ```yaml
 hstack:
   widths: [25, 75]
   children:
-    - sidebar:
+    - section:
         title: Filters
     - table:
         id: equipment-list
@@ -491,7 +523,7 @@ hstack:
 
 ## Dialog Buttons
 
-`dialog` may include an optional `buttons` list for the common action-row pattern. `buttons` contains the same child node shapes that could appear in `children`, normally `button`, `badge-button`, or `link`.
+`dialog` may include an optional `buttons` list for the common action-row pattern. `buttons` contains the same child node shapes that could appear in `children`, normally `button`.
 
 Example:
 
@@ -576,6 +608,9 @@ Schema rules:
 - `label` and `title` may be literal strings or `{ vocabulary: <id> }` objects.
 - `data` remains project-defined structured metadata.
 - `prompt` may be a string on any element. It is non-rendered AI-agent guidance; schema validation recognizes the key and its string shape but does not interpret the text.
+- `note` may be a non-empty string on any element. It is visible annotation text rendered as a callout or appended note.
+- `splitter.orientation` may be `horizontal` or `vertical`; `splitter.sizes` is an optional two-entry proportional array whose entries follow the same rules as stack `widths` and `heights`.
+- `window.menu` and `mobile.menu` may be lists of non-empty strings. The `menu` property is only valid on `window` and `mobile` roots and must not be parsed as a component node.
 - `to` is accepted for legacy files but should be reported as deprecated by validators and rewritten as `anchor`.
 
 For VS Code YAML validation, authors can associate the schema with standalone layout files by adding a workspace setting similar to:
@@ -605,4 +640,4 @@ For fenced YAML inside Markdown, tools should extract the fence body and validat
 
 ## Native-Language Summary
 
-UI DSL は自由図形ではなく、browser、window、mobile、dialog、menu、menubar、vstack、hstack、spacer、grid、split-pane、tabs、button、badge-button、label、hint、note、review、input、image、table などの少数の意味要素で構造を記述する。永続化形式としては `type: uisketch` の frontmatter と明示的な `uisketch` source fence を持つ Markdown 風ファイルを優先し、その fence body にこの DSL の階層構造を書く。`## Layout` や `## レイアウト` は通常の Markdown 見出しであり、通常 `yaml` fence を render/markdown 入力として自動検出しない。frontmatter の title は文書メタデータで、描画される表題は browser/window/mobile/dialog の title 属性に置く。mobile はスマートフォン枠を描く root surface として扱う。root id は任意だが、参照される root には id を付けることを推奨する。root 要素は child ではなく children を持ち、children は暗黙の vstack として扱う。button、badge-button、link は anchor で遷移先 id を持てる。hstack の中の spacer は残り横幅を消費し、複数ある場合は残り幅を按分する。hstack は widths、vstack は heights で直接の子要素に対する比率を指定でき、`$` は残り領域を表す。grid は columns で列数を指定でき、省略時は 2 列とする。dialog は buttons で下部右寄せのボタン列を表現できる。id と data はレンダリング結果のメタデータとして保持する。prompt は任意要素に置ける AI エージェント向けの非表示コメントで、schema はキーと文字列型を検査するが parser や renderer は意味解釈しない。highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。menu は通常メニューとコンテキストメニューを兼ね、ルート要素にもなれる。menubar は root ではなく hstack 相当の desktop-style application menu row として扱う。動的な状態は別ルート定義で表す。hint/note/review は注釈であり製品 UI 文言ではない。入力グループは form/field ではなく vstack/hstack と label/input で表現する。画像領域は実画像ではなく image プレースホルダーで表す。ボタン列は toolbar 専用要素ではなく hstack または dialog.buttons で表現する。サイズ指定は wrapper 要素を増やさず、hstack.widths と vstack.heights のような stack-level property で表現する。通常の内容サイズはデフォルトなので専用要素にしない。CSS のような細かいレイアウト制御は扱わない。コンポーネント語彙は UI Component Catalog で管理する。
+UI DSL は自由図形ではなく、browser、window、mobile、dialog、menu、vstack、hstack、spacer、grid、splitter、tabs、button、toggle、label、input、textarea、combobox、checkbox、radio、image、table などの少数の意味要素で構造を記述する。永続化形式としては `type: uisketch` の frontmatter と明示的な `uisketch` source fence を持つ Markdown 風ファイルを優先し、その fence body にこの DSL の階層構造を書く。`## Layout` や `## レイアウト` は通常の Markdown 見出しであり、通常 `yaml` fence を render/markdown 入力として自動検出しない。frontmatter の title は文書メタデータで、描画される表題は browser/window/mobile/dialog の title 属性に置く。mobile はスマートフォン枠を描く root surface として扱う。root id は任意だが、参照される root には id を付けることを推奨する。root 要素は child ではなく children を持ち、children は暗黙の vstack として扱う。window.menu は window 上部、mobile.menu は mobile 下部に固定表示される文字列リストの chrome 属性であり、children 内の component ではない。button は action と anchor で操作や遷移先 id を持てる。クリック可能な遷移は button で表し、label は非インタラクティブな表示テキストとして扱う。badge 付き操作は button.badge で表す。button の label には短い文字列や絵文字を使える。hstack の中の spacer は残り横幅を消費し、複数ある場合は残り幅を按分する。hstack は widths、vstack は heights で直接の子要素に対する比率を指定でき、`$` は残り領域を表す。splitter は orientation で向きを決め、sizes で 2 pane の比率を指定できる。grid は columns で列数を指定でき、省略時は 2 列とする。dialog は buttons で下部右寄せのボタン列を表現できる。id と data はレンダリング結果のメタデータとして保持する。prompt は任意要素に置ける AI エージェント向けの非表示コメントで、note は任意要素に置ける表示注釈で、どちらも schema はキーと文字列型を検査する。highlight は特定要素を議論・レビュー用に目立たせる renderer hint として扱う。menu は通常メニューとコンテキストメニューを兼ね、ルート要素にもなれる。動的な状態は別ルート定義で表す。入力グループは form/field ではなく vstack/hstack と label/input で表現する。toggle は on/off control、combobox は閉じた選択肢または候補付き入力の baseline component として扱う。画像領域は実画像ではなく image プレースホルダーで表す。ボタン列は toolbar 専用要素ではなく hstack または dialog.buttons で表現する。サイズ指定は wrapper 要素を増やさず、hstack.widths、vstack.heights、splitter.sizes のような owner component property で表現する。通常の内容サイズはデフォルトなので専用要素にしない。CSS のような細かいレイアウト制御は扱わない。コンポーネント語彙は UI Component Catalog で管理する。

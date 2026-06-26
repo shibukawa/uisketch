@@ -91,18 +91,23 @@ Container nodes typically use `children` to hold nested nodes:
 - `vstack`
 - `hstack`
 - `grid`
+- `splitter`
 - `tabs`
 - `section`
-- `sidebar`
-- `split-pane`
 
 Leaf or content nodes usually carry visible content or behavior:
 
 - `button`
+- `toggle`
 - `input`
+- `textarea`
+- `combobox`
+- `checkbox`
+- `radio`
 - `label`
 - `table`
 - `image`
+- `custom`
 - `list`
 - `spacer`
 
@@ -140,4 +145,3 @@ The canonical save result is the YAML source that the editor writes back into th
 - [Web Visual Editor](specs/web-visual-editor.md)
 - [UI Component Catalog](specs/ui-component-catalog.md)
 - [UI Layout DSL](specs/ui-layout-dsl.md)
-

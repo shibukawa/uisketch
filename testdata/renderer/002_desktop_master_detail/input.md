@@ -12,15 +12,16 @@ title: Desktop Workbench
 window:
   id: desktop-workbench
   title: Desktop Workbench
+  menu:
+    - File
+    - Edit
+    - View
   children:
-    - menubar:
+    - splitter:
+        orientation: horizontal
+        sizes: [30, 70]
         children:
-          - label: File
-          - label: Edit
-          - label: View
-    - split-pane:
-        children:
-          - sidebar:
+          - section:
               title: Filters
               children:
                 - list:
@@ -30,11 +31,21 @@ window:
           - section:
               title: Equipment Detail
               children:
-                - table-layout:
+                - grid:
+                    columns: 2
                     children:
                       - input:
                           label: Equipment Name
-                      - switch:
+                      - textarea:
+                          label: Notes
+                      - combobox:
+                          label: Status
+                          options:
+                            - Enabled
+                            - Disabled
+                      - radio:
+                          label: Manual mode
+                      - toggle:
                           label: Enabled
                       - slider:
                           label: Priority

@@ -69,6 +69,7 @@
 - links_to from UI Layout DSL
 - relates_to from UI Layout DSL
 - links_to from Web Visual Editor
+- links_to from Web Visual Editor
 - relates_to from Web Visual Editor
 
 ## UI Concept Model (req.ui-concept-model)

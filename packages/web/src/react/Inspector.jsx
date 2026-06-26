@@ -11,6 +11,9 @@ export function Inspector() {
   const replaceRootType = useEditorStore((state) => state.replaceRootType);
   const selectedPathKey = useMemo(() => selectedPath.join("."), [selectedPath]);
   const [gridColumnsDraft, setGridColumnsDraft] = useState("");
+  const [splitterSizesDraft, setSplitterSizesDraft] = useState("");
+  const [rootMenuDraft, setRootMenuDraft] = useState("");
+  const [dialogButtonsDraft, setDialogButtonsDraft] = useState("");
   const [tableColumnsDraft, setTableColumnsDraft] = useState("");
   const [tabsLabelsDraft, setTabsLabelsDraft] = useState("");
   const [dataDraft, setDataDraft] = useState("");
@@ -19,6 +22,18 @@ export function Inspector() {
   useEffect(() => {
     if (node?.type === "grid") setGridColumnsDraft(String(node.columns || 2));
   }, [node?.type, node?.columns, selectedPathKey]);
+
+  useEffect(() => {
+    if (node?.type === "splitter") setSplitterSizesDraft((node.sizes || [25, 75]).join(", "));
+  }, [node?.type, selectedPathKey]);
+
+  useEffect(() => {
+    if (selectedPath.length === 0 && (node?.type === "window" || node?.type === "mobile")) setRootMenuDraft((node.menu || []).join(", "));
+  }, [node?.type, selectedPathKey]);
+
+  useEffect(() => {
+    if (selectedPath.length === 0 && node?.type === "dialog") setDialogButtonsDraft((node.buttons || []).map((button) => button.label || "").join(", "));
+  }, [node?.type, selectedPathKey]);
 
   useEffect(() => {
     if (node?.type === "table") setTableColumnsDraft((node.columns || []).join(", "));
@@ -67,7 +82,40 @@ export function Inspector() {
           }}
         />
       )}
-      {node.type === "select" && (
+      {node.type === "splitter" && (
+        <Field
+          label="sizes"
+          value={splitterSizesDraft}
+          help="Two entries, for example: 25, 75 or 30, $"
+          onChange={(value) => {
+            setSplitterSizesDraft(value);
+            updateSelectedField("sizes", splitSizeList(value));
+          }}
+        />
+      )}
+      {selectedPath.length === 0 && (node.type === "window" || node.type === "mobile") && (
+        <Field
+          label="menu"
+          value={rootMenuDraft}
+          help="Fixed chrome labels, for example: File, Edit, View"
+          onChange={(value) => {
+            setRootMenuDraft(value);
+            updateSelectedField("menu", splitCommaList(value));
+          }}
+        />
+      )}
+      {selectedPath.length === 0 && node.type === "dialog" && (
+        <Field
+          label="buttons"
+          value={dialogButtonsDraft}
+          help="Bottom-right action buttons, for example: Cancel, OK"
+          onChange={(value) => {
+            setDialogButtonsDraft(value);
+            updateSelectedField("buttons", parseButtonDraft(value, node.buttons || []));
+          }}
+        />
+      )}
+      {node.type === "combobox" && (
         <Field
           label="options"
           value={(node.options || []).join(", ")}
@@ -97,6 +145,12 @@ export function Inspector() {
           Delete
         </button>
       )}
+      <Field
+        label="note"
+        value={node.note || ""}
+        help="Visible sketch annotation for this node."
+        onChange={(value) => updateSelectedField("note", value)}
+      />
       <TextAreaField
         label="prompt"
         value={node.prompt || ""}
@@ -181,6 +235,23 @@ function splitCommaList(value) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function splitSizeList(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item === "$" || item === "*" ? "$" : Number(item)))
+    .filter((item) => item === "$" || Number.isFinite(item));
+}
+
+function parseButtonDraft(value, existingButtons) {
+  return splitCommaList(value).map((label, index) => ({
+    ...(existingButtons[index] || {}),
+    type: "button",
+    label,
+  }));
 }
 
 function formatLabelsDraft(labels) {

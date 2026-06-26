@@ -32,16 +32,21 @@ type Node struct {
 	LegacyTo    string
 	Address     string
 	Hint        string
+	Note        string
 	Prompt      string
 	Data        any
 	Name        string
 	Purpose     string
 	Badge       string
+	Orientation string
+	Menu        []string
 	Columns     []string
+	Options     []string
 	GridColumns int
 	Labels      []TabLabel
 	Widths      []SizeSlot
 	Heights     []SizeSlot
+	Sizes       []SizeSlot
 	Children    []*Node
 	Buttons     []*Node
 }
@@ -201,6 +206,11 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			out.Title = labelLikeValue(prop.Value)
 		case "hint":
 			out.Hint = scalarString(prop.Value)
+		case "note":
+			note, ok := parseStringProperty(prop.Value, ctx, "note", describeNode(out))
+			if ok {
+				out.Note = note
+			}
 		case "prompt":
 			prompt, ok := parseStringProperty(prop.Value, ctx, "prompt", describeNode(out))
 			if ok {
@@ -214,6 +224,13 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			out.Purpose = scalarString(prop.Value)
 		case "badge", "count":
 			out.Badge = scalarString(prop.Value)
+		case "orientation":
+			out.Orientation = scalarString(prop.Value)
+		case "menu":
+			menu, ok := parseStringList(prop.Value, ctx, "menu", describeNode(out))
+			if ok {
+				out.Menu = menu
+			}
 		case "action":
 			out.Action = scalarString(prop.Value)
 		case "anchor":
@@ -252,6 +269,11 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 					out.Columns = columns
 				}
 			}
+		case "options":
+			options, ok := parseStringList(prop.Value, ctx, "options", describeNode(out))
+			if ok {
+				out.Options = options
+			}
 		case "labels":
 			labels, ok := parseTabLabels(prop.Value, ctx, "labels", describeNode(out))
 			if ok {
@@ -266,6 +288,11 @@ func parseNodeProperties(out *Node, props *ast.MappingNode, ctx *parseContext) {
 			heights, ok := parseSizeSlots(prop.Value, ctx, "heights", describeNode(out))
 			if ok {
 				out.Heights = heights
+			}
+		case "sizes":
+			sizes, ok := parseSizeSlots(prop.Value, ctx, "sizes", describeNode(out))
+			if ok {
+				out.Sizes = sizes
 			}
 		case "child":
 			child := parseLayoutNode(prop.Value, ctx, "child of "+describeNode(out))
@@ -520,10 +547,10 @@ func closestKnownProperty(name string) string {
 }
 
 var knownProperties = []string{
-	"id", "label", "title", "hint", "name", "purpose", "badge", "count",
-	"action", "anchor", "to", "address", "children", "buttons", "columns",
-	"labels", "widths", "heights", "child", "data", "highlight", "fallback",
-	"prompt",
+	"id", "label", "title", "hint", "note", "name", "purpose", "badge", "count",
+	"action", "anchor", "to", "address", "menu", "children", "buttons", "columns",
+	"options", "labels", "widths", "heights", "sizes", "orientation", "child",
+	"data", "highlight", "fallback", "prompt",
 }
 
 func editDistance(a, b string) int {
@@ -578,10 +605,10 @@ func offsetYAMLError(err error, lineOffset int) error {
 
 func isScalarLabelNode(t string) bool {
 	switch t {
-	case "button", "icon-button", "floating-action-button", "badge-button", "toggle-button", "link",
-		"label", "hint", "note", "review", "badge",
-		"input", "checkbox", "switch", "slider",
-		"image", "custom-component",
+	case "button", "toggle",
+		"label", "badge",
+		"input", "textarea", "combobox", "checkbox", "radio", "slider",
+		"image", "custom",
 		"table", "list", "tree", "calendar":
 		return true
 	default:

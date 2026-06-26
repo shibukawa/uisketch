@@ -123,6 +123,22 @@ func TestParseLayoutNewSurfaceAndNavigationFields(t *testing.T) {
 	}
 }
 
+func TestParseRootMenuField(t *testing.T) {
+	node, err := ParseYAML(`window:
+  id: editor
+  title: Editor
+  menu:
+    - File
+    - Edit
+`)
+	if err != nil {
+		t.Fatalf("ParseYAML returned error: %v", err)
+	}
+	if got := strings.Join(node.Menu, ","); got != "File,Edit" {
+		t.Fatalf("Menu = %q, want File,Edit", got)
+	}
+}
+
 func TestParseYAMLAcceptsPromptOnAnyElement(t *testing.T) {
 	node, err := ParseYAML(`browser:
   id: root
@@ -285,7 +301,11 @@ func TestParseYAMLReadsScalarLabelShorthand(t *testing.T) {
     - input: Search
     - checkbox: Enabled
     - table: Orders
-    - custom-component: Chart
+    - textarea: Memo
+    - combobox: Status
+    - radio: Option A
+    - toggle: Notifications
+    - custom: Chart
 `)
 	if err != nil {
 		t.Fatalf("ParseYAML returned error: %v", err)
@@ -300,7 +320,11 @@ func TestParseYAMLReadsScalarLabelShorthand(t *testing.T) {
 		{"input", "Search"},
 		{"checkbox", "Enabled"},
 		{"table", "Orders"},
-		{"custom-component", "Chart"},
+		{"textarea", "Memo"},
+		{"combobox", "Status"},
+		{"radio", "Option A"},
+		{"toggle", "Notifications"},
+		{"custom", "Chart"},
 	}
 	if len(node.Children) != len(wants) {
 		t.Fatalf("len(Children) = %d, want %d", len(node.Children), len(wants))
